@@ -5,9 +5,11 @@ Pod::Spec.new do |s|
   s.description    = 'A sample project description'
   s.author         = ''
   s.homepage       = 'https://docs.expo.dev/modules/'
+  # iOS-only. Deployment target is kept low so the module can be linked into
+  # apps supporting older iOS; the Live Activities / ActivityKit code is guarded
+  # with `@available(iOS 16.1, *)` and no-ops below it (graceful degradation).
   s.platforms      = {
-    :ios => '16.4',
-    :tvos => '16.4'
+    :ios => '15.1'
   }
   s.source         = { git: '' }
   s.static_framework = true
