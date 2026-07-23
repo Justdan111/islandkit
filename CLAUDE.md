@@ -21,8 +21,8 @@ Development is phased. **Do not skip ahead or start work belonging to a later ph
 | Phase | Status | Summary |
 |---|---|---|
 | 0 — Spec | ✅ Done | This document + full docs are the spec |
-| 1 — Environment setup | ✅ 🔵 **Active — build this now**  | Monorepo scaffolded, native module + example app linked, builds and runs on a physical device with Personal Team signing |
-| **2 — Now Playing preset (end to end)** | ⬜ Not started | Prove the full architecture with one preset |
+| 1 — Environment setup | ✅ Done on simulator — device run pending developer signing | Monorepo scaffolded, iOS-only module + example app linked; builds/boots on iPhone 17 Pro simulator with a verified native call (`areLiveActivitiesEnabled → true`). Physical-device run per `docs/phase-1-device-signing.md`. Pinned to **Expo SDK 55** (Xcode 26.0.1 can't build SDK 56+; see `docs/phase-1-device-signing.md`). |
+| **2 — Now Playing preset (end to end)** | 🔵 **Active — build this next** | Prove the full architecture with one preset |
 | 3 — Generalize the pattern | ⬜ Not started | Extract shared plumbing so new presets are cheap to add |
 | 4 — Remaining presets | ⬜ Not started | Delivery, Timer, Generic Progress |
 | 5 — Remote push updates | ⛔ **Blocked** | Requires a paid Apple Developer Program account — do not implement or scaffold push-token/APNs code until told the account is active |
