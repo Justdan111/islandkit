@@ -1,6 +1,6 @@
-import { registerWebModule, NativeModule } from 'expo';
-
-// ExpoIslandKitModule is not available on the web platform.
-class ExpoIslandKitModule extends NativeModule<{}> {}
-
-export default registerWebModule(ExpoIslandKitModule, 'ExpoIslandKitModule');
+// Web/non-native stub: Live Activities are iOS-only, so this always resolves false.
+export default {
+  async areLiveActivitiesEnabled(): Promise<boolean> {
+    return false;
+  },
+};
