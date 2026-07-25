@@ -44,6 +44,21 @@ test('start with no deepLink passes null', () => {
   expect(mockNative.startNowPlaying).toHaveBeenCalledWith(baseProps, null);
 });
 
+test('start returns an inert handle but does NOT track it when native reports unsupported (empty id)', () => {
+  mockNative.startNowPlaying.mockReturnValue('');
+  const instance = NowPlayingActivity.start(baseProps);
+  expect(instance.id).toBe('');
+  // A ghost empty-id handle must never leak into getActiveInstances().
+  expect(NowPlayingActivity.getActiveInstances()).toHaveLength(0);
+});
+
+test('a second unsupported start does not collapse onto a shared empty-id key', () => {
+  mockNative.startNowPlaying.mockReturnValue('');
+  NowPlayingActivity.start(baseProps);
+  NowPlayingActivity.start(baseProps);
+  expect(NowPlayingActivity.getActiveInstances()).toHaveLength(0);
+});
+
 test('update forwards the partial props under the instance id', async () => {
   const instance = NowPlayingActivity.start(baseProps);
   await instance.update({ isPlaying: false, elapsedSeconds: 42 });

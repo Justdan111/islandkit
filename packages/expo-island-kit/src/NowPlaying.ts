@@ -58,7 +58,13 @@ export const NowPlayingActivity: LiveActivityFactory<NowPlayingProps> = {
   start(props: NowPlayingProps, deepLinkUrl?: string): LiveActivityInstance<NowPlayingProps> {
     const id = ExpoIslandKitModule.startNowPlaying(props as unknown as Record<string, unknown>, deepLinkUrl ?? null);
     const instance = new NowPlayingInstance(id);
-    active.set(id, instance);
+    // The native call returns "" when Live Activities are unsupported/disabled or
+    // the request failed. Return an inert handle (its update/end safely no-op) but
+    // don't register it — otherwise getActiveInstances() would leak a ghost empty-id
+    // entry and repeated unsupported starts would collapse onto the same "" key.
+    if (id) {
+      active.set(id, instance);
+    }
     return instance;
   },
 

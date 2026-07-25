@@ -15,7 +15,13 @@ public class ExpoIslandKitModule: Module {
       return false
     }
 
-    // Synchronous capability check used by NowPlayingActivity.isSupported().
+    // Synchronous "can I show a Now Playing Live Activity right now?" check, backing
+    // NowPlayingActivity.isSupported(). This intentionally returns areActivitiesEnabled
+    // (not a bare OS-version check): ActivityKit exposes no separate device-capability
+    // API, and areActivitiesEnabled is Apple's documented gate — it is false both on
+    // incapable devices and when the user has disabled Live Activities, which is the
+    // safe signal for a caller deciding whether to call start(). Phase 3's shared API
+    // may split "device-capable" from "user-enabled" if the spec calls for it.
     Function("isNowPlayingSupported") { () -> Bool in
       if #available(iOS 16.2, *) {
         return ActivityAuthorizationInfo().areActivitiesEnabled
