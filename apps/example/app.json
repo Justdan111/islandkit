@@ -8,8 +8,12 @@
     "userInterfaceStyle": "light",
     "ios": {
       "bundleIdentifier": "io.github.Justdan111.islandkitexample",
-      "supportsTablet": false
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSSupportsLiveActivities": true
+      }
     },
+    "plugins": ["@bacons/apple-targets"],
     "web": {
       "favicon": "./assets/favicon.png"
     }
