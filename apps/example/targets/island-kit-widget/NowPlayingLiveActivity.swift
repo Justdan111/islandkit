@@ -2,21 +2,6 @@ import ActivityKit
 import WidgetKit
 import SwiftUI
 
-// Accent color from state, falling back to the system accent.
-private func accent(_ state: NowPlayingAttributes.ContentState) -> Color {
-  Color(hex: state.accentColorHex) ?? .accentColor
-}
-
-private func progress(_ state: NowPlayingAttributes.ContentState) -> Double {
-  guard state.durationSeconds > 0 else { return 0 }
-  return min(max(state.elapsedSeconds / state.durationSeconds, 0), 1)
-}
-
-private func timeString(_ seconds: Double) -> String {
-  let total = Int(seconds.rounded())
-  return String(format: "%d:%02d", total / 60, total % 60)
-}
-
 // Square artwork: remote image when a URL is present, else an SF Symbol placeholder.
 private struct Artwork: View {
   let state: NowPlayingAttributes.ContentState
@@ -52,7 +37,8 @@ private struct NowPlayingLockScreenView: View {
       VStack(alignment: .leading, spacing: 4) {
         Text(context.state.title).font(.headline).lineLimit(1)
         Text(context.state.artist).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
-        ProgressView(value: progress(context.state)).tint(accent(context.state))
+        ProgressView(value: progressFraction(elapsed: context.state.elapsedSeconds, duration: context.state.durationSeconds))
+          .tint(presetAccentColor(context.state.accentColorHex))
         HStack {
           Text(timeString(context.state.elapsedSeconds))
           Spacer()
@@ -63,7 +49,7 @@ private struct NowPlayingLockScreenView: View {
       }
       Image(systemName: context.state.isPlaying ? "pause.fill" : "play.fill")
         .font(.title2)
-        .foregroundStyle(accent(context.state))
+        .foregroundStyle(presetAccentColor(context.state.accentColorHex))
     }
     .padding()
   }
@@ -90,7 +76,8 @@ struct NowPlayingLiveActivity: Widget {
           VStack(alignment: .leading, spacing: 6) {
             Text(context.state.title).font(.headline).lineLimit(1)
             Text(context.state.artist).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
-            ProgressView(value: progress(context.state)).tint(accent(context.state))
+            ProgressView(value: progressFraction(elapsed: context.state.elapsedSeconds, duration: context.state.durationSeconds))
+              .tint(presetAccentColor(context.state.accentColorHex))
           }
         }
       } compactLeading: {
@@ -99,13 +86,13 @@ struct NowPlayingLiveActivity: Widget {
           .clipShape(RoundedRectangle(cornerRadius: 4))
       } compactTrailing: {
         Image(systemName: context.state.isPlaying ? "pause.fill" : "play.fill")
-          .foregroundStyle(accent(context.state))
+          .foregroundStyle(presetAccentColor(context.state.accentColorHex))
       } minimal: {
         Image(systemName: context.state.isPlaying ? "pause.fill" : "play.fill")
-          .foregroundStyle(accent(context.state))
+          .foregroundStyle(presetAccentColor(context.state.accentColorHex))
       }
       .widgetURL(context.attributes.deepLinkUrl.flatMap(URL.init(string:)))
-      .keylineTint(accent(context.state))
+      .keylineTint(presetAccentColor(context.state.accentColorHex))
     }
   }
 }

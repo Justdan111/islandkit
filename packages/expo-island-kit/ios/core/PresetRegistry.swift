@@ -13,6 +13,7 @@ protocol LiveActivityPresetHandler {
 enum PresetRegistry {
   private static let all: [LiveActivityPresetHandler] = [
     NowPlayingHandler(),
+    GenericProgressHandler(),
   ]
 
   static func handler(_ preset: String) -> LiveActivityPresetHandler? {
