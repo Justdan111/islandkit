@@ -431,8 +431,8 @@ const activity = TimerActivity.start({
 // Pausing freezes the native countdown display. Track the timer's endDate in your
 // own app state and pass it back on update along with isPaused.
 // (A convenience `currentEndDate` getter on the instance is planned for a future release.)
-const endDate = /* the Date you passed to start(), held in your app state */;
-activity.update({ label: 'Pasta', endDate, isPaused: true });
+// `myTimerEndDate` is the Date you passed to start(), held in your own app state:
+activity.update({ label: 'Pasta', endDate: myTimerEndDate, isPaused: true });
 ```
 
 > Because the countdown is rendered natively via `Text(timerInterval:)`, it keeps ticking accurately even if your app is fully backgrounded — you don't need to call `.update()` every second.
