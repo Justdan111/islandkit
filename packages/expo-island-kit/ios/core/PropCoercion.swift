@@ -28,6 +28,14 @@ enum PropCoercion {
     if let n = props[key] as? NSNumber { return n.doubleValue }
     return nil
   }
+  // Optional date from an ISO-8601 string (produced by the factory's Date serialization).
+  // Absent key / non-string → keep `fallback`.
+  static func date(_ props: [String: Any], _ key: String, _ fallback: Date?) -> Date? {
+    guard props.keys.contains(key), let s = props[key] as? String else { return fallback }
+    let f = ISO8601DateFormatter()
+    f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    return f.date(from: s) ?? ISO8601DateFormatter().date(from: s) ?? fallback
+  }
 }
 
 // Parses the dismissal-policy string from JS: "immediate", "default", or an ISO-8601 date.

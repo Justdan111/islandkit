@@ -5,10 +5,12 @@ import {
   DeliveryActivity,
   GenericProgressActivity,
   NowPlayingActivity,
+  TimerActivity,
   type DeliveryProps,
   type GenericProgressProps,
   type LiveActivityInstance,
   type NowPlayingProps,
+  type TimerProps,
 } from 'expo-island-kit';
 
 const DURATION = 231;
@@ -40,6 +42,12 @@ const deliveryProps: DeliveryProps = {
 };
 
 const DELIVERY_STAGES: DeliveryProps['status'][] = ['confirmed', 'preparing', 'onTheWay', 'delivered'];
+
+const timerProps: TimerProps = {
+  label: 'Pasta',
+  endDate: new Date(Date.now() + 9 * 60 * 1000),
+  accentColor: '#FF9F0A',
+};
 
 export default function App() {
   const supported = NowPlayingActivity.isSupported();
@@ -124,6 +132,38 @@ export default function App() {
     setDStatus('Ended');
   }
 
+  const tRef = useRef<LiveActivityInstance<TimerProps> | null>(null);
+  const [tStatus, setTStatus] = useState('Idle');
+  const tEndRef = useRef<Date>(timerProps.endDate);
+
+  function startT() {
+    const end = new Date(Date.now() + 9 * 60 * 1000);
+    tEndRef.current = end;
+    const i = TimerActivity.start({ ...timerProps, endDate: end }, 'islandkitexample://timers/pasta');
+    tRef.current = i;
+    setTStatus(i.id ? `Started (${i.id.slice(0, 8)}…)` : 'Start returned no id');
+  }
+  async function pauseT() {
+    const i = tRef.current;
+    if (!i) return setTStatus('No active activity — press Start');
+    // Consumer tracks its own endDate (currentEndDate is a deferred convenience).
+    await i.update({ label: timerProps.label, endDate: tEndRef.current, isPaused: true });
+    setTStatus('Paused');
+  }
+  async function resumeT() {
+    const i = tRef.current;
+    if (!i) return setTStatus('No active activity — press Start');
+    await i.update({ label: timerProps.label, endDate: tEndRef.current, isPaused: false });
+    setTStatus('Resumed');
+  }
+  async function stopT() {
+    const i = tRef.current;
+    if (!i) return setTStatus('No active activity — press Start');
+    await i.end('immediate');
+    tRef.current = null;
+    setTStatus('Ended');
+  }
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>IslandKit</Text>
@@ -146,6 +186,13 @@ export default function App() {
       <Button label="Start" onPress={startD} />
       <Button label="Update (advance status)" onPress={bumpD} />
       <Button label="End" onPress={stopD} tone="#FF375F" />
+
+      <Text style={styles.section}>Timer</Text>
+      <Text style={styles.status}>{tStatus}</Text>
+      <Button label="Start" onPress={startT} />
+      <Button label="Pause" onPress={pauseT} />
+      <Button label="Resume" onPress={resumeT} />
+      <Button label="End" onPress={stopT} tone="#FF375F" />
 
       <StatusBar style="auto" />
     </ScrollView>

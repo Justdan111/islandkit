@@ -15,6 +15,7 @@ enum PresetRegistry {
     NowPlayingHandler(),
     GenericProgressHandler(),
     DeliveryHandler(),
+    TimerHandler(),
   ]
 
   static func handler(_ preset: String) -> LiveActivityPresetHandler? {

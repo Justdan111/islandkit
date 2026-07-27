@@ -7,5 +7,6 @@ struct IslandKitWidgetBundle: WidgetBundle {
     NowPlayingLiveActivity()
     GenericProgressLiveActivity()
     DeliveryLiveActivity()
+    TimerLiveActivity()
   }
 }
