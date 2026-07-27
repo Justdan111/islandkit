@@ -2,8 +2,10 @@ import { useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import {
+  DeliveryActivity,
   GenericProgressActivity,
   NowPlayingActivity,
+  type DeliveryProps,
   type GenericProgressProps,
   type LiveActivityInstance,
   type NowPlayingProps,
@@ -29,6 +31,16 @@ const genericProgressProps: GenericProgressProps = {
   accentColor: '#0A84FF',
 };
 
+const deliveryProps: DeliveryProps = {
+  status: 'onTheWay',
+  etaMinutes: 12,
+  courierName: 'Ade',
+  orderNumber: '#48213',
+  accentColor: '#22C55E',
+};
+
+const DELIVERY_STAGES: DeliveryProps['status'][] = ['confirmed', 'preparing', 'onTheWay', 'delivered'];
+
 export default function App() {
   const supported = NowPlayingActivity.isSupported();
 
@@ -40,6 +52,10 @@ export default function App() {
   const gpRef = useRef<LiveActivityInstance<GenericProgressProps> | null>(null);
   const [gpStatus, setGpStatus] = useState('Idle');
   const [progress, setProgress] = useState(genericProgressProps.progress);
+
+  const dRef = useRef<LiveActivityInstance<DeliveryProps> | null>(null);
+  const [dStatus, setDStatus] = useState('Idle');
+  const [dStage, setDStage] = useState(2); // 'onTheWay'
 
   function startNp() {
     const i = NowPlayingActivity.start(nowPlayingProps, 'islandkitexample://now-playing');
@@ -85,6 +101,29 @@ export default function App() {
     setGpStatus('Ended');
   }
 
+  function startD() {
+    const i = DeliveryActivity.start(deliveryProps, 'islandkitexample://orders/48213');
+    dRef.current = i;
+    setDStage(2);
+    setDStatus(i.id ? `Started (${i.id.slice(0, 8)}…)` : 'Start returned no id');
+  }
+  async function bumpD() {
+    const i = dRef.current;
+    if (!i) return setDStatus('No active activity — press Start');
+    const next = Math.min(dStage + 1, DELIVERY_STAGES.length - 1);
+    setDStage(next);
+    const status = DELIVERY_STAGES[next];
+    await i.update({ status, etaMinutes: status === 'delivered' ? 0 : Math.max(0, 12 - next * 4) });
+    setDStatus(`Updated → ${status}`);
+  }
+  async function stopD() {
+    const i = dRef.current;
+    if (!i) return setDStatus('No active activity — press Start');
+    await i.end('immediate');
+    dRef.current = null;
+    setDStatus('Ended');
+  }
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>IslandKit</Text>
@@ -101,6 +140,12 @@ export default function App() {
       <Button label="Start" onPress={startGp} />
       <Button label="Update (+20%)" onPress={bumpGp} />
       <Button label="End" onPress={stopGp} tone="#FF375F" />
+
+      <Text style={styles.section}>Delivery</Text>
+      <Text style={styles.status}>{dStatus}</Text>
+      <Button label="Start" onPress={startD} />
+      <Button label="Update (advance status)" onPress={bumpD} />
+      <Button label="End" onPress={stopD} tone="#FF375F" />
 
       <StatusBar style="auto" />
     </ScrollView>

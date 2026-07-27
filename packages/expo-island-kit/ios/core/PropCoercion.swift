@@ -21,6 +21,13 @@ enum PropCoercion {
     if let n = props[key] as? NSNumber { return n.doubleValue }
     return fallback
   }
+  // Optional double: absent key → keep `fallback`; present → coerce (or nil if mistyped).
+  static func optDouble(_ props: [String: Any], _ key: String, _ fallback: Double?) -> Double? {
+    guard props.keys.contains(key) else { return fallback }
+    if let d = props[key] as? Double { return d }
+    if let n = props[key] as? NSNumber { return n.doubleValue }
+    return nil
+  }
 }
 
 // Parses the dismissal-policy string from JS: "immediate", "default", or an ISO-8601 date.

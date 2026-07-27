@@ -15,4 +15,5 @@ export async function areLiveActivitiesEnabled(): Promise<boolean> {
 
 export { NowPlayingActivity, type NowPlayingProps } from './presets/NowPlaying';
 export { GenericProgressActivity, type GenericProgressProps } from './presets/GenericProgress';
+export { DeliveryActivity, type DeliveryProps } from './presets/Delivery';
 export type { DismissalPolicy, LiveActivityInstance, LiveActivityFactory } from './core/types';
