@@ -10,6 +10,17 @@ function serializeDismissalPolicy(policy: DismissalPolicy): string {
   return policy.after.toISOString();
 }
 
+// Dates don't marshal across the Expo bridge cleanly; convert any Date-valued prop
+// to an ISO-8601 string. The Swift decoder parses it back via PropCoercion.date.
+function serializeProps(props: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const key of Object.keys(props)) {
+    const value = props[key];
+    out[key] = value instanceof Date ? value.toISOString() : value;
+  }
+  return out;
+}
+
 export function createLiveActivityFactory<T extends object>(preset: string): LiveActivityFactory<T> {
   const active = new Map<string, LiveActivityInstance<T>>();
 
@@ -18,14 +29,14 @@ export function createLiveActivityFactory<T extends object>(preset: string): Liv
 
     async update(props: Partial<T>): Promise<void> {
       if (Platform.OS !== 'ios') return;
-      await ExpoIslandKitModule.updateLiveActivity(preset, this.id, props as Record<string, unknown>);
+      await ExpoIslandKitModule.updateLiveActivity(preset, this.id, serializeProps(props as Record<string, unknown>));
     }
 
     async end(dismissalPolicy: DismissalPolicy = 'default', finalProps?: Partial<T>): Promise<void> {
       active.delete(this.id);
       if (Platform.OS !== 'ios') return;
       if (finalProps) {
-        await ExpoIslandKitModule.updateLiveActivity(preset, this.id, finalProps as Record<string, unknown>);
+        await ExpoIslandKitModule.updateLiveActivity(preset, this.id, serializeProps(finalProps as Record<string, unknown>));
       }
       await ExpoIslandKitModule.endLiveActivity(preset, this.id, serializeDismissalPolicy(dismissalPolicy));
     }
@@ -35,7 +46,7 @@ export function createLiveActivityFactory<T extends object>(preset: string): Liv
     start(props: T, deepLinkUrl?: string): LiveActivityInstance<T> {
       const id = ExpoIslandKitModule.startLiveActivity(
         preset,
-        props as unknown as Record<string, unknown>,
+        serializeProps(props as unknown as Record<string, unknown>),
         deepLinkUrl ?? null,
       );
       const instance = new Instance(id);
