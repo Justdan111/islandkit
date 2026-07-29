@@ -6,5 +6,7 @@ struct IslandKitWidgetBundle: WidgetBundle {
   var body: some Widget {
     NowPlayingLiveActivity()
     GenericProgressLiveActivity()
+    DeliveryLiveActivity()
+    TimerLiveActivity()
   }
 }

@@ -44,7 +44,7 @@ export const DeliveryActivity: LiveActivityFactory<DeliveryProps>;
 - **ContentState:** `status: String`, `etaMinutes: Double?`, `courierName: String?`, `mapSnapshotUrl: String?`, `accentColorHex: String?`. `status` decodes as a plain string via `PropCoercion.string`; the TS union type enforces valid values at the API boundary.
 - **Widget** (`DeliveryLiveActivity`): a widget-internal `status → (SF Symbol, label)` map — e.g. `confirmed → ("checkmark.circle", "Confirmed")`, `preparing → ("timer", "Preparing")`, `onTheWay → ("shippingbox.fill", "On the way")`, `delivered → ("house.fill", "Delivered")` (final symbols chosen for HIG fit during implementation). Regions per §8.2: compact = status icon(leading) + ETA(trailing); minimal = icon; expanded = icon+label(leading), ETA(trailing), courier+orderNumber(bottom) + optional map; Lock Screen = full card. Accent from `accentColorHex` with `.accentColor` fallback (shared `presetAccentColor`).
 - **Map snapshot — render DEFENSIVELY (per review note):** widget extensions have tight memory limits. `mapSnapshotUrl` renders via `AsyncImage` with a **bounded frame** (fixed max height, `.clipped()`), a graceful placeholder on load failure/nil (an `error`/`empty` phase → a neutral map-placeholder view, never a crash or unbounded image), and no full-resolution decode. Absent `mapSnapshotUrl` simply omits the map region.
-- No shared-code change: Delivery slots in via Attributes+symlink, `DeliveryHandler` (+ decoder), one `PresetRegistry.all` line, `DeliveryLiveActivity` widget, `presets/Delivery.ts`, and an example-screen section.
+- **One generic shared primitive:** the optional `etaMinutes: Double?` needs `PropCoercion.optDouble(...)` — the Double sibling of the existing `optString` (distinguishes "key absent → keep base" from "present"). This is a generic coercion primitive (same benign category as Timer's `PropCoercion.date`), **not** preset-specific leakage and **not** a change to the engine/protocol/factory/`types.ts`. Everything else slots in via seams: Attributes+symlink, `DeliveryHandler` (+ decoder), one `PresetRegistry.all` line, `DeliveryLiveActivity` widget, `presets/Delivery.ts`, and an example-screen section.
 
 ---
 
@@ -79,7 +79,7 @@ The generic factory can't pass a JS `Date` across the Expo bridge cleanly. `crea
 
 The **only** shared-code changes permitted:
 1. `packages/expo-island-kit/src/core/createLiveActivityFactory.ts` — the generic Date→ISO serialization step (+ its Jest test).
-2. `packages/expo-island-kit/ios/core/PropCoercion.swift` — add `date(...)`.
+2. `packages/expo-island-kit/ios/core/PropCoercion.swift` — add generic coercion primitives: `optDouble(...)` (for Delivery's optional `etaMinutes`) and `date(...)` (for Timer's `endDate`). Both are siblings of the existing `optString`/`double` — generic, not preset-specific.
 3. `packages/expo-island-kit/ios/core/PresetRegistry.swift` — append **two** handler lines (`DeliveryHandler()`, `TimerHandler()`).
 4. `packages/expo-island-kit/src/index.ts` — re-export the two new factories + prop types.
 
@@ -96,7 +96,7 @@ The **only** shared-code changes permitted:
 ## 6. Definition of done
 
 - [ ] `DeliveryActivity` + `TimerActivity` added end to end; canonical prop shapes exact.
-- [ ] Delivery required **no** shared-code change; Timer required only the generic Date-serialization (factory + `PropCoercion.date`) + its two registry lines (abstraction bar held — verified in review).
+- [ ] The only shared changes are generic coercion primitives (`PropCoercion.optDouble` for Delivery, `PropCoercion.date` for Timer) + the factory Date-serialization + two registry lines + index re-exports. The **structural** abstraction (engine, protocol, factory shape, `types.ts`) is untouched — verified in review.
 - [ ] Generic Date-prop serialization covered by a Jest test; full Jest suite green.
 - [ ] **Regression:** NowPlaying + Generic Progress still start/update/end (the factory change is exercised by their tests + a sim check).
 - [ ] App + `island-kit-widget` build succeeds; all four preset widgets registered in the bundle.

@@ -14,6 +14,7 @@ jest.mock('../ExpoIslandKitModule', () => {
 });
 
 import ExpoIslandKitModule from '../ExpoIslandKitModule';
+import { createLiveActivityFactory } from '../core/createLiveActivityFactory';
 import { GenericProgressActivity } from '../presets/GenericProgress';
 import { NowPlayingActivity } from '../presets/NowPlaying';
 
@@ -103,4 +104,21 @@ test('a second preset reuses the factory under its own name with separate tracki
   expect(gp.id).toBe('activity-1');
   expect(GenericProgressActivity.getActiveInstances()).toHaveLength(1);
   expect(NowPlayingActivity.getActiveInstances()).toHaveLength(0);
+});
+
+test('start and update serialize Date-valued props to ISO strings before the native call', async () => {
+  const factory = createLiveActivityFactory<{ label: string; endDate: Date }>('testDate');
+  const end = new Date('2030-01-01T00:00:00.000Z');
+  const instance = factory.start({ label: 'x', endDate: end });
+  expect(mockNative.startLiveActivity).toHaveBeenCalledWith(
+    'testDate',
+    { label: 'x', endDate: '2030-01-01T00:00:00.000Z' },
+    null,
+  );
+  await instance.update({ endDate: end });
+  expect(mockNative.updateLiveActivity).toHaveBeenCalledWith(
+    'testDate',
+    'activity-1',
+    { endDate: '2030-01-01T00:00:00.000Z' },
+  );
 });
