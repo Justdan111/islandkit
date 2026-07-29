@@ -1,0 +1,98 @@
+name: CI
+
+# The merge gate for `main`. Both jobs are required status checks.
+#
+# Linux only, deliberately: this repo is private, and macOS runner minutes bill at 10x
+# the Linux rate against a metered monthly allowance. A macOS unsigned-simulator build
+# that confirms the Swift compiles is a tracked follow-up — see docs/ci-deferred.md.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# A new push to a PR cancels the previous run rather than paying for both.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # MUST come before setup-node: `cache: pnpm` needs a pnpm binary to find.
+      # The version is read from `packageManager` in the root package.json.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      # The package's own `prepare` script runs a full tsc build here. That means a type
+      # error in src/ surfaces at this step rather than the typecheck step; the explicit
+      # typecheck below still covers the test files, which tsconfig.json excludes.
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm -r --if-present lint
+
+      - name: Typecheck
+        run: pnpm -r --if-present typecheck
+
+      # CI=true is set by Actions automatically, which matters: the package's test and
+      # build scripts append --watch when `process.stdout.isTTY && !process.env.CI`.
+      - name: Test
+        run: pnpm -r --if-present test
+
+  commit-hygiene:
+    name: commit-hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Blocks NEW AI co-author trailers. History predating `main` retains them by an
+      # explicit decision (see CLAUDE.md) — this only scans the range a PR or push adds,
+      # never the whole history, so that older work doesn't fail every build forever.
+      #
+      # Also catches the one path by which a trailer can reach main another way: GitHub's
+      # squash-merge auto-generates co-author trailers from the squashed commits' authors,
+      # which is why this runs on `push` to main as well as on pull_request.
+      - name: Scan new commits for AI co-author trailers
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+
+          # Branch creation pushes a null base; nothing new to scan against.
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            echo "No base commit to compare against (branch creation) — skipping."
+            exit 0
+          fi
+
+          echo "Scanning $BASE..$HEAD_SHA"
+          offenders=$(git log --format='%H %s' "$BASE..$HEAD_SHA" | while read -r sha subject; do
+            if git log -1 --format='%b' "$sha" | grep -qiE '^co-authored-by:.*(claude|anthropic)'; then
+              echo "$sha $subject"
+            fi
+          done)
+
+          if [ -n "$offenders" ]; then
+            echo "$offenders" | while read -r line; do
+              echo "::error::Commit carries an AI co-author trailer: $line"
+            done
+            echo ""
+            echo "Remove the 'Co-Authored-By: Claude' trailer from the commit message(s)."
+            echo "The .githooks/commit-msg hook strips these automatically — run 'pnpm install'"
+            echo "to activate it (it sets core.hooksPath)."
+            exit 1
+          fi
+
+          echo "No AI co-author trailers found."

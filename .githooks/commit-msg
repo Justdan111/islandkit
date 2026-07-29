@@ -1,0 +1,24 @@
+#!/bin/sh
+# Strips AI co-author trailers before the commit is written.
+#
+# These originate from an AI assistant's own instructions rather than from git config,
+# so `git config` alone can't prevent them. This hook is layer 2 of 2: the CI
+# `commit-hygiene` job is the backstop for anything that bypasses it (--no-verify, or a
+# fresh clone that hasn't run `pnpm install` yet).
+#
+# Activated by `git config core.hooksPath .githooks`, which the root package.json's
+# `prepare` script runs on install.
+set -e
+
+MSG_FILE="$1"
+[ -f "$MSG_FILE" ] || exit 0
+
+if grep -qiE '^Co-Authored-By:.*(claude|anthropic)' "$MSG_FILE"; then
+  # BSD sed (macOS) and GNU sed (Linux) disagree on -i, so write via a temp file.
+  TMP="$MSG_FILE.ikhook"
+  grep -viE '^Co-Authored-By:.*(claude|anthropic)' "$MSG_FILE" > "$TMP"
+  mv "$TMP" "$MSG_FILE"
+  echo "commit-msg hook: stripped an AI co-author trailer."
+fi
+
+exit 0
