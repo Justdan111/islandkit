@@ -1,0 +1,10 @@
+// Typecheck-only config for CI.
+//
+// The build config (tsconfig.json) excludes __tests__/__mocks__ so they stay out of
+// build/. That also means `tsc` never typechecks the test files. This config extends the
+// base and drops the exclude, so CI checks everything while build output stays clean.
+{
+  "extends": "./tsconfig.json",
+  "include": ["./src"],
+  "exclude": []
+}

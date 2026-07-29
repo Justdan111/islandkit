@@ -8,4 +8,5 @@ export interface GenericProgressProps {
   accentColor?: string;
 }
 
-export const GenericProgressActivity = createLiveActivityFactory<GenericProgressProps>('genericProgress');
+export const GenericProgressActivity =
+  createLiveActivityFactory<GenericProgressProps>('genericProgress');

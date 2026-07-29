@@ -6,9 +6,21 @@ export default {
   isLiveActivitySupported(): boolean {
     return false;
   },
-  startLiveActivity(_preset: string, _props: Record<string, unknown>, _deepLinkUrl: string | null): string {
+  startLiveActivity(
+    _preset: string,
+    _props: Record<string, unknown>,
+    _deepLinkUrl: string | null
+  ): string {
     return '';
   },
-  async updateLiveActivity(_preset: string, _activityId: string, _props: Record<string, unknown>): Promise<void> {},
-  async endLiveActivity(_preset: string, _activityId: string, _dismissalPolicy: string | null): Promise<void> {},
+  async updateLiveActivity(
+    _preset: string,
+    _activityId: string,
+    _props: Record<string, unknown>
+  ): Promise<void> {},
+  async endLiveActivity(
+    _preset: string,
+    _activityId: string,
+    _dismissalPolicy: string | null
+  ): Promise<void> {},
 };
