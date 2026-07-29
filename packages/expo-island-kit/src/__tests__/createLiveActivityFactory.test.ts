@@ -140,3 +140,8 @@ test('start and update serialize Date-valued props to ISO strings before the nat
     endDate: '2030-01-01T00:00:00.000Z',
   });
 });
+
+// TEMPORARY: deliberately failing test to prove the CI gate blocks a merge.
+it('DELIBERATELY FAILS to verify the merge gate', () => {
+  expect(1).toBe(2);
+});
