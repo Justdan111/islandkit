@@ -1,15 +1,17 @@
 import { useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import {
+  GenericProgressActivity,
   NowPlayingActivity,
+  type GenericProgressProps,
   type LiveActivityInstance,
   type NowPlayingProps,
 } from 'expo-island-kit';
 
 const DURATION = 231;
 
-const initialProps: NowPlayingProps = {
+const nowPlayingProps: NowPlayingProps = {
   title: 'Midnight City',
   artist: 'M83',
   artworkUrl: 'https://picsum.photos/seed/islandkit/300',
@@ -19,53 +21,89 @@ const initialProps: NowPlayingProps = {
   accentColor: '#FF375F',
 };
 
-export default function App() {
-  const instanceRef = useRef<LiveActivityInstance<NowPlayingProps> | null>(null);
-  const [status, setStatus] = useState('Idle');
-  const [elapsed, setElapsed] = useState(initialProps.elapsedSeconds);
-  const [playing, setPlaying] = useState(initialProps.isPlaying);
+const genericProgressProps: GenericProgressProps = {
+  title: 'Uploading backup',
+  subtitle: '128 of 400 photos',
+  progress: 0.32,
+  iconSystemName: 'icloud.and.arrow.up',
+  accentColor: '#0A84FF',
+};
 
+export default function App() {
   const supported = NowPlayingActivity.isSupported();
 
-  function start() {
-    const instance = NowPlayingActivity.start(initialProps, 'islandkitexample://now-playing');
-    instanceRef.current = instance;
-    setStatus(instance.id ? `Started (${instance.id.slice(0, 8)}…)` : 'Start returned no id (unsupported?)');
-  }
+  const npRef = useRef<LiveActivityInstance<NowPlayingProps> | null>(null);
+  const [npStatus, setNpStatus] = useState('Idle');
+  const [elapsed, setElapsed] = useState(nowPlayingProps.elapsedSeconds);
+  const [playing, setPlaying] = useState(nowPlayingProps.isPlaying);
 
-  async function bump() {
-    const instance = instanceRef.current;
-    if (!instance) return setStatus('No active activity — press Start');
+  const gpRef = useRef<LiveActivityInstance<GenericProgressProps> | null>(null);
+  const [gpStatus, setGpStatus] = useState('Idle');
+  const [progress, setProgress] = useState(genericProgressProps.progress);
+
+  function startNp() {
+    const i = NowPlayingActivity.start(nowPlayingProps, 'islandkitexample://now-playing');
+    npRef.current = i;
+    setNpStatus(i.id ? `Started (${i.id.slice(0, 8)}…)` : 'Start returned no id');
+  }
+  async function bumpNp() {
+    const i = npRef.current;
+    if (!i) return setNpStatus('No active activity — press Start');
     const nextElapsed = Math.min(elapsed + 30, DURATION);
     const nextPlaying = !playing;
     setElapsed(nextElapsed);
     setPlaying(nextPlaying);
-    await instance.update({ elapsedSeconds: nextElapsed, isPlaying: nextPlaying });
-    setStatus(`Updated → ${nextElapsed}s, ${nextPlaying ? 'playing' : 'paused'}`);
+    await i.update({ elapsedSeconds: nextElapsed, isPlaying: nextPlaying });
+    setNpStatus(`Updated → ${nextElapsed}s, ${nextPlaying ? 'playing' : 'paused'}`);
+  }
+  async function stopNp() {
+    const i = npRef.current;
+    if (!i) return setNpStatus('No active activity — press Start');
+    await i.end('immediate');
+    npRef.current = null;
+    setNpStatus('Ended');
   }
 
-  async function stop() {
-    const instance = instanceRef.current;
-    if (!instance) return setStatus('No active activity — press Start');
-    await instance.end('immediate');
-    instanceRef.current = null;
-    setElapsed(initialProps.elapsedSeconds);
-    setPlaying(initialProps.isPlaying);
-    setStatus('Ended');
+  function startGp() {
+    const i = GenericProgressActivity.start(genericProgressProps, 'islandkitexample://backup');
+    gpRef.current = i;
+    setGpStatus(i.id ? `Started (${i.id.slice(0, 8)}…)` : 'Start returned no id');
+  }
+  async function bumpGp() {
+    const i = gpRef.current;
+    if (!i) return setGpStatus('No active activity — press Start');
+    const next = Math.min(progress + 0.2, 1);
+    setProgress(next);
+    await i.update({ progress: next, subtitle: `${Math.round(next * 400)} of 400 photos` });
+    setGpStatus(`Updated → ${Math.round(next * 100)}%`);
+  }
+  async function stopGp() {
+    const i = gpRef.current;
+    if (!i) return setGpStatus('No active activity — press Start');
+    await i.end('immediate');
+    gpRef.current = null;
+    setGpStatus('Ended');
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>IslandKit — Now Playing</Text>
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.title}>IslandKit</Text>
       <Text style={styles.line}>Supported: {supported ? 'yes' : 'no'}</Text>
-      <Text style={styles.status}>{status}</Text>
 
-      <Button label="Start" onPress={start} />
-      <Button label="Update (+30s, toggle play)" onPress={bump} />
-      <Button label="End" onPress={stop} tone="#FF375F" />
+      <Text style={styles.section}>Now Playing</Text>
+      <Text style={styles.status}>{npStatus}</Text>
+      <Button label="Start" onPress={startNp} />
+      <Button label="Update (+30s, toggle play)" onPress={bumpNp} />
+      <Button label="End" onPress={stopNp} tone="#FF375F" />
+
+      <Text style={styles.section}>Generic Progress</Text>
+      <Text style={styles.status}>{gpStatus}</Text>
+      <Button label="Start" onPress={startGp} />
+      <Button label="Update (+20%)" onPress={bumpGp} />
+      <Button label="End" onPress={stopGp} tone="#FF375F" />
 
       <StatusBar style="auto" />
-    </View>
+    </ScrollView>
   );
 }
 
@@ -78,10 +116,11 @@ function Button({ label, onPress, tone = '#0A84FF' }: { label: string; onPress: 
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', gap: 12, padding: 24 },
+  container: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', gap: 10, padding: 24, paddingTop: 72 },
   title: { fontSize: 24, fontWeight: '700' },
   line: { fontSize: 15, color: '#333' },
-  status: { fontSize: 14, color: '#666', marginBottom: 8, textAlign: 'center' },
+  section: { fontSize: 18, fontWeight: '700', marginTop: 20 },
+  status: { fontSize: 14, color: '#666', textAlign: 'center' },
   button: { paddingVertical: 14, paddingHorizontal: 20, borderRadius: 12, minWidth: 260, alignItems: 'center' },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });

@@ -13,10 +13,6 @@ export async function areLiveActivitiesEnabled(): Promise<boolean> {
   return ExpoIslandKitModule.areLiveActivitiesEnabled();
 }
 
-export {
-  NowPlayingActivity,
-  type NowPlayingProps,
-  type DismissalPolicy,
-  type LiveActivityInstance,
-  type LiveActivityFactory,
-} from './NowPlaying';
+export { NowPlayingActivity, type NowPlayingProps } from './presets/NowPlaying';
+export { GenericProgressActivity, type GenericProgressProps } from './presets/GenericProgress';
+export type { DismissalPolicy, LiveActivityInstance, LiveActivityFactory } from './core/types';

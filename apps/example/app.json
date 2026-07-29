@@ -8,6 +8,7 @@
     "userInterfaceStyle": "light",
     "ios": {
       "bundleIdentifier": "io.github.Justdan111.islandkitexample",
+      "appleTeamId": "A66QV2FW3V",
       "supportsTablet": false,
       "infoPlist": {
         "NSSupportsLiveActivities": true
