@@ -34,8 +34,11 @@ extension Color {
 // module-scope free function of the same name — even though its `Color?`
 // parameter can't accept our `String?` argument — producing a hard type error
 // instead of falling back to this function. Avoid the name collision entirely.
+// Falls back through: the preset's own accentColor prop -> the plugin's
+// defaultAccentColor option (generated into IslandKitDefaults.swift, nil when unset)
+// -> the system accent.
 func presetAccentColor(_ hex: String?) -> Color {
-  Color(hex: hex) ?? .accentColor
+  Color(hex: hex) ?? Color(hex: islandKitDefaultAccentHex) ?? .accentColor
 }
 
 // Clamp a raw fraction into [0, 1].
