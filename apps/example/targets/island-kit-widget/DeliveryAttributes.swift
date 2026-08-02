@@ -1,1 +1,0 @@
-../../../../packages/expo-island-kit/ios/shared/DeliveryAttributes.swift

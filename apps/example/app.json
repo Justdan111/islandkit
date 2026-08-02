@@ -9,12 +9,9 @@
     "ios": {
       "bundleIdentifier": "io.github.Justdan111.islandkitexample",
       "appleTeamId": "A66QV2FW3V",
-      "supportsTablet": false,
-      "infoPlist": {
-        "NSSupportsLiveActivities": true
-      }
+      "supportsTablet": false
     },
-    "plugins": ["@bacons/apple-targets"],
+    "plugins": ["expo-island-kit"],
     "web": {
       "favicon": "./assets/favicon.png"
     }
