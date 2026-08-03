@@ -120,7 +120,7 @@ IslandKit's SwiftUI layer is built on top of **`@bacons/apple-targets`** (`expo-
 
 ### The three moving parts, in plain terms
 
-1. **The config plugin** (built on `@bacons/apple-targets`) runs during `expo prebuild` and generates the actual Xcode widget extension target, wires up the App Group entitlement your main app and the extension both need to share data, and adds the presets you opted into.
+1. **The config plugin** (built on `@bacons/apple-targets`) runs during `expo prebuild` and generates the actual Xcode widget extension target from the sources shipped in the package, sets `NSSupportsLiveActivities` on your main app, and adds the presets you opted into.
 2. **The native bridge** (an Expo Module) is the thin Swift layer that translates your JS function calls into real `ActivityKit` calls (`Activity<Attributes>.request(attributes:content:)`, `.update(_:)`, `.end(_:dismissalPolicy:)`).
 3. **The preset SwiftUI views** are the pre-written, polished layouts that live inside the widget extension and render whatever content state you pushed from JS.
 
@@ -586,7 +586,7 @@ export function addUserInteractionListener(
         {
           "presets": ["nowPlaying", "delivery", "timer", "genericProgress"],
           "deploymentTarget": "16.2",
-          "bundleIdentifier": "com.yourcompany.yourapp.island-kit-widget",
+          "bundleIdentifier": "com.yourcompany.yourapp.widget",
           "defaultAccentColor": "#FA2D48"
         }
       ]
@@ -599,7 +599,7 @@ export function addUserInteractionListener(
 |---|---|---|
 | `presets` | all four | Which presets to include. Excluding unused presets reduces extension binary size and build time |
 | `deploymentTarget` | `16.2` | Minimum iOS version for the extension target. IslandKit's ActivityKit code requires 16.2 |
-| `bundleIdentifier` | `<app bundle id>.island-kit-widget` | Bundle ID for the generated widget extension target. Leave unset unless you have a reason — changing it requires re-provisioning |
+| `bundleIdentifier` | `<app bundle id>.widget` | Bundle ID for the generated widget extension target. Leave unset unless you have a reason — changing it requires re-provisioning |
 | `defaultAccentColor` | system accent | Fallback tint used when a preset's `accentColor` prop is omitted |
 
 **Not yet available.** `groupIdentifier` and `enablePushNotifications` are planned for the remote-push release and are ignored (with a warning) today — both need a paid Apple Developer account. Set your team via `ios.appleTeamId` rather than a plugin option; the widget target signs from it.
@@ -769,8 +769,8 @@ Always branch your UI on `isDynamicIslandSupported` and `areLiveActivitiesEnable
 | OS < 16.1 | All factory methods return `undefined` from `start()` | Feature-detect with `NowPlayingActivity.isSupported()` before wiring up UI that depends on it |
 | App is force-quit while an activity is running | The activity keeps running (managed by the system), but you lose your JS reference to it | Persist `activity.id` yourself (e.g. AsyncStorage) if you need to reconnect and call `.update()`/`.end()` later |
 | Too many rapid `update()` calls | The system throttles / coalesces updates | Debounce update calls in your app code (see [Best Practices](#15-best-practices--performance)) |
-| Missing App Group entitlement | Native module throws on `start()` | Confirm `groupIdentifier` matches between the config plugin and re-run `prebuild --clean` |
-| Push token requested without `enablePushNotifications: true` | `getPushToken()` resolves `null` | Enable the flag in the config plugin and rebuild |
+| Missing App Group entitlement | Native module throws on `start()` | *(Not yet available — `groupIdentifier` is a planned remote-push option, ignored today; see §11.)* |
+| Push token requested without `enablePushNotifications: true` | `getPushToken()` resolves `null` | *(Not yet available — `enablePushNotifications` is a planned remote-push option, ignored today; see §11.)* |
 
 ---
 
@@ -815,7 +815,7 @@ Always branch your UI on `isDynamicIslandSupported` and `areLiveActivitiesEnable
 Check, in order: `areLiveActivitiesEnabled()`, that `NSSupportsLiveActivities` is `true` in the generated `Info.plist` (the config plugin sets this — confirm after `prebuild`), and that you're running a dev client/EAS build, not Expo Go.
 
 **Q: It works in the simulator but not on my device.**
-Almost always a code-signing / App Group mismatch. Confirm `appleTeamId` and `groupIdentifier` in your config match what's in your Apple Developer account, then `prebuild --clean` and rebuild.
+Almost always a code-signing mismatch. Confirm `appleTeamId` in your config matches what's in your Apple Developer account, then `prebuild --clean` and rebuild. (`groupIdentifier` is not yet a wired-up option — see §11.)
 
 **Q: Can I run this in Expo Go?**
 No. Live Activities require a compiled widget extension target, which Expo Go cannot include. A development build is mandatory.
@@ -827,7 +827,7 @@ Yes — different preset types can run concurrently. Within the *same* preset ty
 Live Activities are an iPhone-focused feature; iPad support is not part of ActivityKit as of this writing. Verify against current Apple documentation if this matters for your app.
 
 **Q: My push updates aren't arriving.**
-Confirm `enablePushNotifications: true` is set and you've rebuilt, that your APNs auth key has the ActivityKit push type enabled in your Apple Developer account, and that the `apns-topic` header exactly matches `<your bundle id>.push-type.liveactivity`.
+`enablePushNotifications` is not yet a wired-up config plugin option (see §11's "Not yet available" callout) — remote push is a future release. When it ships: confirm the flag is set and you've rebuilt, that your APNs auth key has the ActivityKit push type enabled in your Apple Developer account, and that the `apns-topic` header exactly matches `<your bundle id>.push-type.liveactivity`.
 
 ---
 
