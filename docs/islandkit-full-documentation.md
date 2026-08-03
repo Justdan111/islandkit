@@ -166,22 +166,20 @@ npx expo install expo-island-kit
 // app.json
 {
   "expo": {
-    "plugins": [
-      [
-        "expo-island-kit",
-        {
-          "appleTeamId": "YOUR_APPLE_TEAM_ID",
-          "groupIdentifier": "group.com.yourcompany.yourapp",
-          "presets": ["nowPlaying", "delivery"],
-          "enablePushNotifications": true
-        }
-      ]
-    ]
+    "ios": {
+      "bundleIdentifier": "com.yourcompany.yourapp",
+      "appleTeamId": "YOUR_APPLE_TEAM_ID"
+    },
+    "plugins": ["expo-island-kit"]
   }
 }
 ```
 
-See [Section 11](#11-configuration-reference-appjson) for every available option.
+That is the whole setup — IslandKit generates the widget extension target for you. **Do not also list `@bacons/apple-targets`**: IslandKit applies it internally, and listing both builds every target twice.
+
+**Known limitation:** `@bacons/apple-targets@5.0.0` (the newest published version, as of writing) cannot handle two targets of the same `type`. If your own `targets/` directory defines a second **widget** extension, prebuild will crash with a `removeFromProject` error — this does not affect other target types (e.g. `share`, `notification-content`), which are picked up fine alongside IslandKit's. If your app needs its own Widget, add it inside a single widget extension rather than maintaining a second `type: "widget"` target.
+
+To customise, pass options: `["expo-island-kit", { "presets": ["nowPlaying", "timer"] }]`. See [Section 11](#11-configuration-reference-appjson).
 
 ### 5.3 Prebuild
 
@@ -189,7 +187,7 @@ See [Section 11](#11-configuration-reference-appjson) for every available option
 npx expo prebuild -p ios --clean
 ```
 
-This generates your `ios/` folder, including the widget extension target, with entitlements and App Group wired up automatically.
+This generates your `ios/` folder, including the widget extension target, with `NSSupportsLiveActivities` set on your app automatically.
 
 ### 5.4 Build a dev client
 
@@ -586,13 +584,10 @@ export function addUserInteractionListener(
       [
         "expo-island-kit",
         {
-          "appleTeamId": "ABCDE12345",
-          "groupIdentifier": "group.com.yourcompany.yourapp",
-          "bundleIdentifier": "com.yourcompany.yourapp.IslandKitExtension",
           "presets": ["nowPlaying", "delivery", "timer", "genericProgress"],
-          "enablePushNotifications": true,
-          "defaultAccentColor": "#FA2D48",
-          "deploymentTarget": "16.2"
+          "deploymentTarget": "16.2",
+          "bundleIdentifier": "com.yourcompany.yourapp.island-kit-widget",
+          "defaultAccentColor": "#FA2D48"
         }
       ]
     ]
@@ -602,13 +597,14 @@ export function addUserInteractionListener(
 
 | Option | Default | Description |
 |---|---|---|
-| `appleTeamId` | — | Your Apple Developer Team ID. Required for code signing the extension target |
-| `groupIdentifier` | `group.<main app bundle id>` | App Group used to share data between your app and the widget extension |
-| `bundleIdentifier` | `<app bundle id>.IslandKitExtension` | Bundle ID for the generated widget extension target |
 | `presets` | all four | Which presets to include. Excluding unused presets reduces extension binary size and build time |
-| `enablePushNotifications` | `false` | Adds the `aps-environment` entitlement and enables push-to-start/per-activity token support |
-| `defaultAccentColor` | system default | Fallback tint used when a preset's `accentColor` prop is omitted |
-| `deploymentTarget` | `16.1` | Minimum iOS version for the extension target |
+| `deploymentTarget` | `16.2` | Minimum iOS version for the extension target. IslandKit's ActivityKit code requires 16.2 |
+| `bundleIdentifier` | `<app bundle id>.island-kit-widget` | Bundle ID for the generated widget extension target. Leave unset unless you have a reason — changing it requires re-provisioning |
+| `defaultAccentColor` | system accent | Fallback tint used when a preset's `accentColor` prop is omitted |
+
+**Not yet available.** `groupIdentifier` and `enablePushNotifications` are planned for the remote-push release and are ignored (with a warning) today — both need a paid Apple Developer account. Set your team via `ios.appleTeamId` rather than a plugin option; the widget target signs from it.
+
+The generated `targets/island-kit-widget/` directory is **build output**: it is overwritten on every `expo prebuild` and should be git-ignored. Do not edit it by hand.
 
 After changing any of these, re-run `npx expo prebuild --clean` to regenerate the native project.
 
@@ -844,7 +840,9 @@ The repository ships an `apps/example` Expo app demonstrating all four presets:
 - **`/timer`** — a cook-timer UI using `TimerActivity`, including pause/resume
 - **`/upload`** — a fake file-upload progress screen using `GenericProgressActivity`
 
-Clone it, run `npx expo prebuild -p ios && npx expo run:ios`, and use it as a reference implementation when integrating IslandKit into your own app.
+The example consumes IslandKit exactly as any consumer does — via the `expo-island-kit` config plugin in `app.json` — and carries **no widget Swift in its tracked source**. `npx expo prebuild -p ios --clean` regenerates `apps/example/targets/island-kit-widget/` from the package before every build; that directory is git-ignored build output, not something checked into the repo.
+
+Clone it, run `npx expo prebuild -p ios --clean && npx expo run:ios`, and use it as a reference implementation when integrating IslandKit into your own app.
 
 ---
 

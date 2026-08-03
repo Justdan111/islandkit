@@ -26,7 +26,7 @@ Development is phased. **Do not skip ahead or start work belonging to a later ph
 | **3 — Generalize the pattern** | 🔵 **Active** | Registry/protocol abstraction so new presets are cheap; validate with Generic Progress. Spec `docs/superpowers/specs/2026-07-26-phase-3-generalize-pattern-design.md`, plan `docs/superpowers/plans/2026-07-26-phase-3-generalize-pattern.md` (branch `phase-3-generalize-pattern`). |
 | 4 — Remaining presets | ⬜ Not started | Delivery, Timer, Generic Progress |
 | 5 — Remote push updates | ⛔ **Blocked** | Requires a paid Apple Developer Program account — do not implement or scaffold push-token/APNs code until told the account is active |
-| 6 — DX polish | ⬜ Not started | Config plugin polish, error messages, defaults |
+| 6 — DX polish | 🟡 **Config plugin done** | Config plugin ships (`app.plugin.js` generates the widget target; consumer writes zero Swift; 4 options). Spec `docs/superpowers/specs/2026-07-27-phase-6-config-plugin-design.md`, plan `docs/superpowers/plans/2026-07-27-phase-6-config-plugin.md` (branch `phase-6-config-plugin`). **Remaining:** native error messages, prop defaults, unsupported-path signalling. |
 | 7 — Docs & example app | ⬜ Not started | |
 | 8 — Testing matrix | ⬜ Not started | |
 | 9 — Publish v0.1 | ⬜ Not started | |
@@ -49,21 +49,19 @@ The developer is currently on a **free Apple ID / Personal Team**, not a paid Ap
 ```
 islandkit/                          (pnpm workspace root)
 ├── packages/
-│   └── expo-island-kit/            (the actual npm package — this is what ships)
-│       ├── src/                    (TypeScript API — what consumers import)
-│       ├── ios/                    (Expo Modules native bridge, Swift)
+│   └── expo-island-kit/
+│       ├── app.plugin.js        (config plugin — generates the consumer's widget target)
+│       ├── plugin/
+│       │   ├── generateTarget.js  (pure, unit-tested generator)
+│       │   └── widget/            (the shipped widget SwiftUI template)
+│       ├── src/
+│       ├── ios/                   (shared/ holds the single-source *Attributes.swift)
 │       └── expo-module.config.json
-├── apps/
-│   └── example/                    (Expo app used for local testing/dev, not published)
-│       ├── app.json
-│       ├── targets/
-│       │   └── island-kit-widget/  (@bacons/apple-targets widget extension — Now Playing SwiftUI lives here for now)
-│       │       └── expo-target.config.js
-│       └── App.tsx
-└── pnpm-workspace.yaml
+└── apps/
+    └── example/                   (targets/ is now plugin-generated + git-ignored)
 ```
 
-Note: during early development, the widget extension SwiftUI views live inside `apps/example/targets/island-kit-widget/` (scaffolded by `@bacons/apple-targets`). As the package matures (Phase 3+), the goal is for the package itself to own and ship this target definition so consumers don't have to run `create-target` manually — but don't attempt that restructuring during Phase 2. Get one preset working end to end in the example app first.
+Note: the package now owns and ships the widget target definition (`plugin/`) — the config plugin generates `targets/island-kit-widget/` into a consumer's project at prebuild time. The example app consumes IslandKit like any other consumer: no widget Swift lives in its tracked source, and `npx expo prebuild -p ios --clean` regenerates the target from the package before every build.
 
 ---
 
@@ -76,7 +74,7 @@ JS/TS (packages/expo-island-kit/src)
 Swift native module (packages/expo-island-kit/ios)
   → decodes props into ActivityAttributes + ContentState
   → calls Activity<NowPlayingAttributes>.request(attributes:content:)
-Widget extension (apps/example/targets/island-kit-widget)
+Widget extension (generated into <projectRoot>/targets/island-kit-widget by app.plugin.js)
   → SwiftUI views render compact/minimal/expanded Dynamic Island regions
   → SwiftUI view renders the Lock Screen banner
 ```
@@ -205,6 +203,6 @@ Do not start Phase 3 (generalizing the architecture across presets) until Phase 
 - Android support of any kind
 - Push notifications / remote updates (Phase 5, blocked on paid account)
 - The Delivery, Timer, and Generic Progress presets (Phase 4 — after Phase 3 generalizes the pattern)
-- Config plugin automation that generates the widget target automatically (Phase 6 — for now, the target is scaffolded manually via `@bacons/apple-targets` CLI in the example app)
+- Widget customization / eject story — the generated `targets/island-kit-widget/` is overwritten every prebuild by design; a supported override mechanism is a later phase
 - TestFlight or App Store distribution setup
 - Any UI polish beyond "correct and legible" — visual refinement is a later pass
