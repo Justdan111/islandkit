@@ -307,7 +307,7 @@ start() → [one or more update() calls] → end()
 - A **push-to-start token** lets your server start a *new* Live Activity remotely, without the app being open (useful for e.g. "your order just shipped").
 - A **per-activity push token** lets your server `update()` or `end()` an *existing* activity remotely (useful for delivery ETA changes pushed from your backend rather than polled by the client).
 
-Both require `enablePushNotifications: true` in the config plugin and a properly configured APNs setup — see [Section 12](#12-remote-push-updates-apns).
+Both are planned to require `enablePushNotifications: true` in the config plugin and a properly configured APNs setup — but that option is **not yet available**: it is ignored (with a warning) today, since remote push needs a paid Apple Developer account. See [Section 11](#11-configuration-reference-appjson) / [Section 12](#12-remote-push-updates-apns).
 
 ### System-imposed limits
 
@@ -597,7 +597,7 @@ export function addUserInteractionListener(
 
 | Option | Default | Description |
 |---|---|---|
-| `presets` | all four | Which presets to include. Excluding unused presets reduces extension binary size and build time |
+| `presets` | all four | Which presets to include. Excluding unused presets reduces extension binary size and build time. **This only narrows what the widget extension renders — it does not remove any preset's JS API.** All four factories (`NowPlayingActivity`, `DeliveryActivity`, `TimerActivity`, `GenericProgressActivity`) are exported unconditionally; calling `.start()` on an excluded preset will still resolve with an activity id but nothing will render, because the generated extension has no `ActivityConfiguration` for it. Only list presets you exclude if you are sure your app never calls them |
 | `deploymentTarget` | `16.2` | Minimum iOS version for the extension target. IslandKit's ActivityKit code requires 16.2 |
 | `bundleIdentifier` | `<app bundle id>.widget` | Bundle ID for the generated widget extension target. Leave unset unless you have a reason — changing it requires re-provisioning |
 | `defaultAccentColor` | system accent | Fallback tint used when a preset's `accentColor` prop is omitted |
@@ -872,7 +872,7 @@ Check the compatibility table in the repository README before upgrading either E
 
 ## 21. Contributing
 
-Contributions are welcome, especially for new presets and Android parity. Before opening a PR:
+Contributions are welcome, especially for new presets. IslandKit is **iOS only** — Android support is not a project goal, so please don't open PRs adding Android code or config. Before opening a PR:
 
 1. Open an issue describing the preset or change first — native/Swift changes are expensive to review without agreement on scope
 2. New presets must include: the SwiftUI views for all Dynamic Island regions + Lock Screen banner, TypeScript types, a README section following the format in [Section 8](#8-presets--full-reference), and an example screen in `apps/example`

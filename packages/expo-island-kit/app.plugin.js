@@ -58,9 +58,18 @@ const withIslandKit = (config, options = {}) => {
   warnUnsupportedOptions(options);
   warnOnDoubleApplication(config);
 
-  // projectRoot is available on _internal at plugin-eval during prebuild; fall back
-  // defensively for other config-resolution paths (e.g. `expo config`).
-  const projectRoot = (config._internal && config._internal.projectRoot) || process.cwd();
+  // projectRoot is available on _internal at plugin-eval during prebuild (and other
+  // config-resolution paths, e.g. `expo config`). We throw rather than guess when it's
+  // missing — this value drives an unconditional recursive delete of
+  // <projectRoot>/targets/island-kit-widget in generateTarget, and guessing a directory
+  // to wipe is the wrong failure mode.
+  if (!config._internal || !config._internal.projectRoot) {
+    throw new Error(
+      'expo-island-kit: could not resolve the project root from the Expo config ' +
+        '(config._internal.projectRoot is missing). This usually means an unsupported Expo version.'
+    );
+  }
+  const projectRoot = config._internal.projectRoot;
 
   // MUST run before withTargetsDir globs targets/. Option validation happens inside
   // generateTarget and throws with the valid preset list.

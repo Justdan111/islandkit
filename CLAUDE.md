@@ -36,7 +36,7 @@ Development is phased. **Do not skip ahead or start work belonging to a later ph
 
 The developer is currently on a **free Apple ID / Personal Team**, not a paid Apple Developer Program membership. This means:
 
-- **Do not add the App Groups capability/entitlement** anywhere (app target, widget extension target, `app.json`, entitlements files) unless explicitly asked. It is not required for Phase 2–4 — ActivityKit delivers content state to the widget extension directly through the framework; it does not require shared App Group storage for the core start/update/end flow.
+- **Do not add the App Groups capability/entitlement** anywhere (app target, widget extension target, `app.json`, entitlements files) unless explicitly asked. It is not required for Phase 2–6 — ActivityKit delivers content state to the widget extension directly through the framework; it does not require shared App Group storage for the core start/update/end flow, and the config plugin doesn't need it either.
 - **Do not add the Push Notifications capability, `aps-environment` entitlement, or any ActivityKit push-token code.** This belongs to Phase 5 and requires a paid account. If you're implementing something and find yourself reaching for a push token, stop — that's a Phase 5 concern, not now.
 - **`appleTeamId` in `app.json` is now set and stays** (`ios.appleTeamId: A66QV2FW3V`) — the `@bacons/apple-targets` widget extension needs it to sign the widget target for physical-device builds. Device signing still uses Xcode "Automatically manage signing" with the Personal Team; the Apple ID that owns this team must be logged into Xcode ▸ Settings ▸ Accounts. (This reverses the earlier "do not set appleTeamId" rule, per the developer's Phase-2 device pass.)
 - The example app's bundle identifier must stay **globally unique** (it's prefixed with the developer's GitHub username or similar) — don't change it to something generic.
@@ -83,111 +83,17 @@ Match this shape for every preset — don't invent a different pattern per prese
 
 ---
 
-## Phase 2 — what to build right now
+## What to build next
 
-Build the **Now Playing** preset completely, end to end, so it can be tested on a physical device.
+Phases 1–4 are done (Now Playing, the Phase 3 registry/protocol abstraction, and the Delivery + Timer presets all ship, verified on the simulator; Now Playing is also device-verified from Phase 2). Phase 6's config-plugin slice is also done — `app.plugin.js` generates the consumer's widget extension target at `expo prebuild`, so consumers write zero Swift. Phase 5 (remote push updates) stays **blocked** until the developer has a paid Apple Developer Program account — do not implement or scaffold push-token/APNs code before then.
 
-### 1. Swift: Activity Attributes + Content State
+What's left, in rough order:
 
-In the widget extension target, define:
+- **Phase 6 DX polish (remaining):** clearer native error messages, sensible prop defaults, and clean signalling on unsupported paths (old OS, Live Activities disabled, excluded preset called anyway — see `docs/islandkit-full-documentation.md` §11's `presets` warning).
+- **Outstanding on-device visual pass:** everything shipped so far has only been simulator-verified for its newest pieces. Still needed on real Dynamic Island hardware, built via `expo prebuild --clean` from the plugin (not the old manually-scaffolded target): expanded/long-press layout, the Lock Screen banner, Timer's live ticking countdown and pause/resume behavior, and Delivery's map snapshot rendering.
+- **Phases 7–10** (docs & example app, testing matrix, publish v0.1, iterate) — not started.
 
-```swift
-struct NowPlayingAttributes: ActivityAttributes {
-    public struct ContentState: Codable, Hashable {
-        var title: String
-        var artist: String
-        var artworkUrl: String?
-        var isPlaying: Bool
-        var elapsedSeconds: Double
-        var durationSeconds: Double
-    }
-    // Static/fixed-for-life fields (if any) go outside ContentState.
-    // For Now Playing, everything is expected to change over the life of the
-    // activity, so ContentState should carry essentially all of the props.
-}
-```
-
-### 2. Swift: SwiftUI views for every Dynamic Island region
-
-Implement, inside a `NowPlayingLiveActivity: Widget` conforming to `ActivityConfiguration`:
-
-- `DynamicIsland` with:
-  - `.compactLeading` — small artwork thumbnail
-  - `.compactTrailing` — play/pause glyph (or simple waveform if time allows; glyph is an acceptable first pass)
-  - `.minimal` — artwork thumbnail only
-  - `.expanded` regions:
-    - `.leading` — artwork
-    - `.trailing` — duration text
-    - `.bottom` — title, artist, a progress bar (a simple `ProgressView` is fine for v1 — a scrubber with drag is a nice-to-have, not required for Phase 2 done)
-- The Lock Screen banner view — same information, laid out full-width
-
-Accent color: read from a prop, default to system accent if not provided. Don't hardcode a brand color.
-
-Keep the SwiftUI simple and correct over polished for this phase — visual refinement is a later pass, not a Phase 2 blocker.
-
-### 3. Swift: Expo Modules native bridge
-
-In `packages/expo-island-kit/ios`, add functions on the module class (match whatever class name `create-expo-module` generated — don't rename it):
-
-- `startNowPlaying(props: [String: Any], deepLinkUrl: String?) -> String` — returns the activity's `id`
-- `updateNowPlaying(activityId: String, props: [String: Any]) -> Void`
-- `endNowPlaying(activityId: String, dismissalPolicy: String?) -> Void`
-
-Handle the "unsupported" case gracefully — if `ActivityAuthorizationInfo().areActivitiesEnabled` is `false`, or the OS version is below 16.1, these functions should no-op / return a clear signal rather than throw an unhandled native error.
-
-### 4. TypeScript: public API
-
-In `packages/expo-island-kit/src`, expose exactly this shape (from the full spec):
-
-```ts
-export interface NowPlayingProps {
-  title: string;
-  artist: string;
-  artworkUrl?: string;
-  artworkAsset?: string;
-  isPlaying: boolean;
-  elapsedSeconds: number;
-  durationSeconds: number;
-  accentColor?: string;
-}
-
-export interface LiveActivityInstance<T> {
-  readonly id: string;
-  update(props: Partial<T>): Promise<void>;
-  end(dismissalPolicy?: 'default' | 'immediate' | { after: Date }, finalProps?: Partial<T>): Promise<void>;
-}
-
-export interface LiveActivityFactory<T> {
-  start(props: T, deepLinkUrl?: string): LiveActivityInstance<T>;
-  getActiveInstances(): LiveActivityInstance<T>[];
-  isSupported(): boolean;
-}
-
-export const NowPlayingActivity: LiveActivityFactory<NowPlayingProps>;
-```
-
-`getPushToken` and `addPushTokenListener` are in the full spec's shared API but belong to Phase 5 — you can leave stubs that throw a clear "not yet implemented" error, or omit them from the type entirely for now. Prefer omitting — don't ship dead/misleading API surface.
-
-### 5. Example app screen
-
-In `apps/example`, add a screen that:
-- Calls `NowPlayingActivity.start(...)` with mock data and a button
-- Has a button to call `.update(...)` with changed `elapsedSeconds`/`isPlaying`
-- Has a button to call `.end()`
-
-This is the manual test harness for this phase — it doesn't need real audio playback wired up.
-
-### Definition of done for Phase 2
-
-- [ ] `NowPlayingActivity.start()` from the example app produces a visible Dynamic Island pill on a physical device with Dynamic Island hardware
-- [ ] Long-press expands to the full layout with title/artist/progress visible
-- [ ] `.update()` visibly changes the displayed content
-- [ ] `.end()` removes the activity
-- [ ] Locking the device shows the Lock Screen banner with the same content
-- [ ] No App Group or Push Notification entitlements were added anywhere in the process
-- [ ] Works via `npx expo run:ios --device` without manual Xcode intervention beyond the one-time signing setup from Phase 1
-
-Do not start Phase 3 (generalizing the architecture across presets) until Phase 2's checklist is fully green on a real device.
+Don't skip ahead into Phase 5 or start substantial new preset/architecture work without being asked; the sections below (Definition-of-Done conventions, coding conventions, account constraints) still apply to whatever comes next.
 
 ---
 
