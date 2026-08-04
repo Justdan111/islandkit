@@ -23,10 +23,10 @@ Development is phased. **Do not skip ahead or start work belonging to a later ph
 | 0 — Spec | ✅ Done | This document + full docs are the spec |
 | 1 — Environment setup | ✅ Done on simulator — device run pending developer signing | Monorepo scaffolded, iOS-only module + example app linked; builds/boots on iPhone 17 Pro simulator with a verified native call (`areLiveActivitiesEnabled → true`). Physical-device run per `docs/phase-1-device-signing.md`. Pinned to **Expo SDK 55** (Xcode 26.0.1 can't build SDK 56+; see `docs/phase-1-device-signing.md`). |
 | 2 — Now Playing preset (end to end) | ✅ **Done — verified green on real Dynamic Island hardware (iPhone 14 Pro)** | TS API, Swift ActivityKit bridge, `island-kit-widget` SwiftUI extension, example harness (branch `phase-2-now-playing-preset`). All 5 DoD checks passed on device: Start (pill appears + persists after leaving app), long-press expand (title/artist/artwork/progress), Update (live content change), lock (Lock Screen banner), End (clean removal). Known polish item logged (expanded bottom progress-bar clip — deferred to a later visual pass). |
-| **3 — Generalize the pattern** | 🔵 **Active** | Registry/protocol abstraction so new presets are cheap; validate with Generic Progress. Spec `docs/superpowers/specs/2026-07-26-phase-3-generalize-pattern-design.md`, plan `docs/superpowers/plans/2026-07-26-phase-3-generalize-pattern.md` (branch `phase-3-generalize-pattern`). |
-| 4 — Remaining presets | ⬜ Not started | Delivery, Timer, Generic Progress |
+| 3 — Generalize the pattern | ✅ **Done — verified green on the simulator** | Registry/protocol abstraction (`PresetRegistry`, `LiveActivityEngine`, `createLiveActivityFactory`) so new presets are cheap; validated with Generic Progress. Spec `docs/superpowers/specs/2026-07-26-phase-3-generalize-pattern-design.md`, plan `docs/superpowers/plans/2026-07-26-phase-3-generalize-pattern.md` (branch `phase-3-generalize-pattern`, merged to `main`). Simulator-verified: start/render/end round-trip for Now Playing (regression) + Generic Progress; on-device visual pass still outstanding. |
+| 4 — Remaining presets | ✅ **Done — verified green on the simulator** | Delivery + Timer presets shipped on top of the Phase 3 abstraction, with zero diff to `core/`/`presets/`'s shared shape. Spec `docs/superpowers/specs/2026-07-26-phase-4-delivery-timer-presets-design.md`, plan `docs/superpowers/plans/2026-07-26-phase-4-delivery-timer-presets.md` (branch `phase-4-delivery-timer`, merged to `main`). Simulator-verified: both presets' compact glyphs render with correct accent colors and start/end correctly. **Outstanding (deferred to the on-device visual pass, same as Phase 3):** expanded/long-press layout, Lock Screen banner, Timer's ticking/pause-resume behavior, Delivery's map snapshot. |
 | 5 — Remote push updates | ⛔ **Blocked** | Requires a paid Apple Developer Program account — do not implement or scaffold push-token/APNs code until told the account is active |
-| 6 — DX polish | ⬜ Not started | Config plugin polish, error messages, defaults |
+| 6 — DX polish | 🟡 **Config plugin done** | Config plugin ships (`app.plugin.js` generates the widget target; consumer writes zero Swift; 4 options). Spec `docs/superpowers/specs/2026-07-27-phase-6-config-plugin-design.md`, plan `docs/superpowers/plans/2026-07-27-phase-6-config-plugin.md` (branch `phase-6-config-plugin`). **Remaining:** native error messages, prop defaults, unsupported-path signalling. |
 | 7 — Docs & example app | ⬜ Not started | |
 | 8 — Testing matrix | ⬜ Not started | |
 | 9 — Publish v0.1 | ⬜ Not started | |
@@ -36,7 +36,7 @@ Development is phased. **Do not skip ahead or start work belonging to a later ph
 
 The developer is currently on a **free Apple ID / Personal Team**, not a paid Apple Developer Program membership. This means:
 
-- **Do not add the App Groups capability/entitlement** anywhere (app target, widget extension target, `app.json`, entitlements files) unless explicitly asked. It is not required for Phase 2–4 — ActivityKit delivers content state to the widget extension directly through the framework; it does not require shared App Group storage for the core start/update/end flow.
+- **Do not add the App Groups capability/entitlement** anywhere (app target, widget extension target, `app.json`, entitlements files) unless explicitly asked. It is not required for Phase 2–6 — ActivityKit delivers content state to the widget extension directly through the framework; it does not require shared App Group storage for the core start/update/end flow, and the config plugin doesn't need it either.
 - **Do not add the Push Notifications capability, `aps-environment` entitlement, or any ActivityKit push-token code.** This belongs to Phase 5 and requires a paid account. If you're implementing something and find yourself reaching for a push token, stop — that's a Phase 5 concern, not now.
 - **`appleTeamId` in `app.json` is now set and stays** (`ios.appleTeamId: A66QV2FW3V`) — the `@bacons/apple-targets` widget extension needs it to sign the widget target for physical-device builds. Device signing still uses Xcode "Automatically manage signing" with the Personal Team; the Apple ID that owns this team must be logged into Xcode ▸ Settings ▸ Accounts. (This reverses the earlier "do not set appleTeamId" rule, per the developer's Phase-2 device pass.)
 - The example app's bundle identifier must stay **globally unique** (it's prefixed with the developer's GitHub username or similar) — don't change it to something generic.
@@ -49,21 +49,19 @@ The developer is currently on a **free Apple ID / Personal Team**, not a paid Ap
 ```
 islandkit/                          (pnpm workspace root)
 ├── packages/
-│   └── expo-island-kit/            (the actual npm package — this is what ships)
-│       ├── src/                    (TypeScript API — what consumers import)
-│       ├── ios/                    (Expo Modules native bridge, Swift)
+│   └── expo-island-kit/
+│       ├── app.plugin.js        (config plugin — generates the consumer's widget target)
+│       ├── plugin/
+│       │   ├── generateTarget.js  (pure, unit-tested generator)
+│       │   └── widget/            (the shipped widget SwiftUI template)
+│       ├── src/
+│       ├── ios/                   (shared/ holds the single-source *Attributes.swift)
 │       └── expo-module.config.json
-├── apps/
-│   └── example/                    (Expo app used for local testing/dev, not published)
-│       ├── app.json
-│       ├── targets/
-│       │   └── island-kit-widget/  (@bacons/apple-targets widget extension — Now Playing SwiftUI lives here for now)
-│       │       └── expo-target.config.js
-│       └── App.tsx
-└── pnpm-workspace.yaml
+└── apps/
+    └── example/                   (targets/ is now plugin-generated + git-ignored)
 ```
 
-Note: during early development, the widget extension SwiftUI views live inside `apps/example/targets/island-kit-widget/` (scaffolded by `@bacons/apple-targets`). As the package matures (Phase 3+), the goal is for the package itself to own and ship this target definition so consumers don't have to run `create-target` manually — but don't attempt that restructuring during Phase 2. Get one preset working end to end in the example app first.
+Note: the package now owns and ships the widget target definition (`plugin/`) — the config plugin generates `targets/island-kit-widget/` into a consumer's project at prebuild time. The example app consumes IslandKit like any other consumer: no widget Swift lives in its tracked source, and `npx expo prebuild -p ios --clean` regenerates the target from the package before every build.
 
 ---
 
@@ -76,7 +74,7 @@ JS/TS (packages/expo-island-kit/src)
 Swift native module (packages/expo-island-kit/ios)
   → decodes props into ActivityAttributes + ContentState
   → calls Activity<NowPlayingAttributes>.request(attributes:content:)
-Widget extension (apps/example/targets/island-kit-widget)
+Widget extension (generated into <projectRoot>/targets/island-kit-widget by app.plugin.js)
   → SwiftUI views render compact/minimal/expanded Dynamic Island regions
   → SwiftUI view renders the Lock Screen banner
 ```
@@ -85,111 +83,17 @@ Match this shape for every preset — don't invent a different pattern per prese
 
 ---
 
-## Phase 2 — what to build right now
+## What to build next
 
-Build the **Now Playing** preset completely, end to end, so it can be tested on a physical device.
+Phases 1–4 are done (Now Playing, the Phase 3 registry/protocol abstraction, and the Delivery + Timer presets all ship, verified on the simulator; Now Playing is also device-verified from Phase 2). Phase 6's config-plugin slice is also done — `app.plugin.js` generates the consumer's widget extension target at `expo prebuild`, so consumers write zero Swift. Phase 5 (remote push updates) stays **blocked** until the developer has a paid Apple Developer Program account — do not implement or scaffold push-token/APNs code before then.
 
-### 1. Swift: Activity Attributes + Content State
+What's left, in rough order:
 
-In the widget extension target, define:
+- **Phase 6 DX polish (remaining):** clearer native error messages, sensible prop defaults, and clean signalling on unsupported paths (old OS, Live Activities disabled, excluded preset called anyway — see `docs/islandkit-full-documentation.md` §11's `presets` warning).
+- **Outstanding on-device visual pass:** everything shipped so far has only been simulator-verified for its newest pieces. Still needed on real Dynamic Island hardware, built via `expo prebuild --clean` from the plugin (not the old manually-scaffolded target): expanded/long-press layout, the Lock Screen banner, Timer's live ticking countdown and pause/resume behavior, and Delivery's map snapshot rendering.
+- **Phases 7–10** (docs & example app, testing matrix, publish v0.1, iterate) — not started.
 
-```swift
-struct NowPlayingAttributes: ActivityAttributes {
-    public struct ContentState: Codable, Hashable {
-        var title: String
-        var artist: String
-        var artworkUrl: String?
-        var isPlaying: Bool
-        var elapsedSeconds: Double
-        var durationSeconds: Double
-    }
-    // Static/fixed-for-life fields (if any) go outside ContentState.
-    // For Now Playing, everything is expected to change over the life of the
-    // activity, so ContentState should carry essentially all of the props.
-}
-```
-
-### 2. Swift: SwiftUI views for every Dynamic Island region
-
-Implement, inside a `NowPlayingLiveActivity: Widget` conforming to `ActivityConfiguration`:
-
-- `DynamicIsland` with:
-  - `.compactLeading` — small artwork thumbnail
-  - `.compactTrailing` — play/pause glyph (or simple waveform if time allows; glyph is an acceptable first pass)
-  - `.minimal` — artwork thumbnail only
-  - `.expanded` regions:
-    - `.leading` — artwork
-    - `.trailing` — duration text
-    - `.bottom` — title, artist, a progress bar (a simple `ProgressView` is fine for v1 — a scrubber with drag is a nice-to-have, not required for Phase 2 done)
-- The Lock Screen banner view — same information, laid out full-width
-
-Accent color: read from a prop, default to system accent if not provided. Don't hardcode a brand color.
-
-Keep the SwiftUI simple and correct over polished for this phase — visual refinement is a later pass, not a Phase 2 blocker.
-
-### 3. Swift: Expo Modules native bridge
-
-In `packages/expo-island-kit/ios`, add functions on the module class (match whatever class name `create-expo-module` generated — don't rename it):
-
-- `startNowPlaying(props: [String: Any], deepLinkUrl: String?) -> String` — returns the activity's `id`
-- `updateNowPlaying(activityId: String, props: [String: Any]) -> Void`
-- `endNowPlaying(activityId: String, dismissalPolicy: String?) -> Void`
-
-Handle the "unsupported" case gracefully — if `ActivityAuthorizationInfo().areActivitiesEnabled` is `false`, or the OS version is below 16.1, these functions should no-op / return a clear signal rather than throw an unhandled native error.
-
-### 4. TypeScript: public API
-
-In `packages/expo-island-kit/src`, expose exactly this shape (from the full spec):
-
-```ts
-export interface NowPlayingProps {
-  title: string;
-  artist: string;
-  artworkUrl?: string;
-  artworkAsset?: string;
-  isPlaying: boolean;
-  elapsedSeconds: number;
-  durationSeconds: number;
-  accentColor?: string;
-}
-
-export interface LiveActivityInstance<T> {
-  readonly id: string;
-  update(props: Partial<T>): Promise<void>;
-  end(dismissalPolicy?: 'default' | 'immediate' | { after: Date }, finalProps?: Partial<T>): Promise<void>;
-}
-
-export interface LiveActivityFactory<T> {
-  start(props: T, deepLinkUrl?: string): LiveActivityInstance<T>;
-  getActiveInstances(): LiveActivityInstance<T>[];
-  isSupported(): boolean;
-}
-
-export const NowPlayingActivity: LiveActivityFactory<NowPlayingProps>;
-```
-
-`getPushToken` and `addPushTokenListener` are in the full spec's shared API but belong to Phase 5 — you can leave stubs that throw a clear "not yet implemented" error, or omit them from the type entirely for now. Prefer omitting — don't ship dead/misleading API surface.
-
-### 5. Example app screen
-
-In `apps/example`, add a screen that:
-- Calls `NowPlayingActivity.start(...)` with mock data and a button
-- Has a button to call `.update(...)` with changed `elapsedSeconds`/`isPlaying`
-- Has a button to call `.end()`
-
-This is the manual test harness for this phase — it doesn't need real audio playback wired up.
-
-### Definition of done for Phase 2
-
-- [ ] `NowPlayingActivity.start()` from the example app produces a visible Dynamic Island pill on a physical device with Dynamic Island hardware
-- [ ] Long-press expands to the full layout with title/artist/progress visible
-- [ ] `.update()` visibly changes the displayed content
-- [ ] `.end()` removes the activity
-- [ ] Locking the device shows the Lock Screen banner with the same content
-- [ ] No App Group or Push Notification entitlements were added anywhere in the process
-- [ ] Works via `npx expo run:ios --device` without manual Xcode intervention beyond the one-time signing setup from Phase 1
-
-Do not start Phase 3 (generalizing the architecture across presets) until Phase 2's checklist is fully green on a real device.
+Don't skip ahead into Phase 5 or start substantial new preset/architecture work without being asked; the sections below (Definition-of-Done conventions, coding conventions, account constraints) still apply to whatever comes next.
 
 ---
 
@@ -204,7 +108,6 @@ Do not start Phase 3 (generalizing the architecture across presets) until Phase 
 
 - Android support of any kind
 - Push notifications / remote updates (Phase 5, blocked on paid account)
-- The Delivery, Timer, and Generic Progress presets (Phase 4 — after Phase 3 generalizes the pattern)
-- Config plugin automation that generates the widget target automatically (Phase 6 — for now, the target is scaffolded manually via `@bacons/apple-targets` CLI in the example app)
+- Widget customization / eject story — the generated `targets/island-kit-widget/` is overwritten every prebuild by design; a supported override mechanism is a later phase
 - TestFlight or App Store distribution setup
 - Any UI polish beyond "correct and legible" — visual refinement is a later pass

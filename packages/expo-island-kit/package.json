@@ -4,6 +4,14 @@
   "description": "Drop-in iOS Live Activities and Dynamic Island presets for Expo",
   "main": "build/index.js",
   "types": "build/index.d.ts",
+  "files": [
+    "app.plugin.js",
+    "build",
+    "ios",
+    "plugin",
+    "!plugin/__tests__",
+    "expo-module.config.json"
+  ],
   "scripts": {
     "build": "node internal/module_scripts/build.js",
     "clean": "node internal/module_scripts/clean.js",
@@ -27,7 +35,9 @@
   "author": "Justdan111 <emmanuelngulube292@gmail.com> (https://github.com/Justdan111)",
   "license": "MIT",
   "homepage": "https://github.com/Justdan111/islandkit#readme",
-  "dependencies": {},
+  "dependencies": {
+    "@bacons/apple-targets": "^5.0.0"
+  },
   "devDependencies": {
     "@babel/core": "^7.26.0",
     "@types/jest": "^29.2.1",
@@ -45,7 +55,8 @@
   "jest": {
     "preset": "jest-expo",
     "roots": [
-      "<rootDir>/src"
+      "<rootDir>/src",
+      "<rootDir>/plugin"
     ]
   },
   "peerDependencies": {

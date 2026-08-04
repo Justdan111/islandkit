@@ -129,7 +129,37 @@ This is not tidiness, it is correctness, and it fixes two distinct bugs:
 
 If a consumer lists both `expo-island-kit` and `@bacons/apple-targets`, `withTargetsDir` is applied twice. This project has already hit the resulting failure (`withIosXcodeProjectBeta2BaseMod: Cannot read properties of undefined (reading 'removeFromProject')` — "target already exists"). `createRunOncePlugin` guards *our* plugin, not theirs.
 
-Mitigation: at plugin-eval, inspect `config.plugins` for a `@bacons/apple-targets` entry and emit a clear `console.warn` naming the fix ("remove `@bacons/apple-targets` from `plugins` — expo-island-kit applies it for you; your own `targets/*` are still picked up"). Documented in the README and full doc §5.2. A warning rather than a throw: a consumer on an unusual setup keeps their escape hatch.
+Mitigation: at plugin-eval, inspect `config.plugins` for a `@bacons/apple-targets` entry and emit a clear `console.warn` naming the fix ("remove `@bacons/apple-targets` from `plugins` — expo-island-kit applies it for you"). Documented in the README and full doc §5.2. A warning rather than a throw: a consumer on an unusual setup keeps their escape hatch.
+
+### 4.5 Hard limitation — one target per type (found by the Task-1 spike, 2026-07-31)
+
+`@bacons/apple-targets@5.0.0` **cannot handle two targets of the same `type`**. In
+`with-xcode-changes.js`:
+
+```js
+const targets = getExtensionTargets();   // filtered by isNativeTargetOfType(target, props.type)
+let targetToUpdate = targets.find(t => t.props.productName === productName) ?? targets[0];
+```
+
+Processing a second same-type target misses on `productName`, and the `?? targets[0]` fallback
+silently grabs the first unrelated target of that type. The code then takes the "update" branch and
+tears down a `buildConfigurationList` the new target does not have, throwing
+`TypeError: withIosXcodeProjectBeta2BaseMod: Cannot read properties of undefined (reading 'removeFromProject')`.
+5.0.0 is the newest published version; there is no upgrade to escape it.
+
+Consequences, all verified empirically:
+
+- **IslandKit's own design is unaffected** — it ships exactly one widget extension target whose
+  `IslandKitWidgetBundle` lists all four preset Widgets, which is how WidgetKit is meant to be used.
+  Proven: single-target prebuild + `** BUILD SUCCEEDED **`.
+- **A consumer with their own separate *widget* extension target will hit this.** Document it as a
+  known limitation with the workaround: add their Widget to a single extension rather than
+  maintaining a second widget target.
+- **A consumer with a target of a different type** (`share`, `notification-content`, …) is fine,
+  because `targets` is type-filtered. The earlier blanket claim that any second target breaks was
+  wrong; so was the claim that all of a consumer's own `targets/*` are safely picked up.
+- **The §10 "require both plugins" fallback is dead.** It produces two target directories just the
+  same, so it does not escape the crash. The wrap design is the only viable one — and it is proven.
 
 ---
 

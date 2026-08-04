@@ -41,6 +41,9 @@ importers:
 
   packages/expo-island-kit:
     dependencies:
+      '@bacons/apple-targets':
+        specifier: ^5.0.0
+        version: 5.0.0(expo@55.0.28)(typescript@5.9.3)
       react:
         specifier: '*'
         version: 19.2.0

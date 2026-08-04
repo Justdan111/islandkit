@@ -120,7 +120,7 @@ IslandKit's SwiftUI layer is built on top of **`@bacons/apple-targets`** (`expo-
 
 ### The three moving parts, in plain terms
 
-1. **The config plugin** (built on `@bacons/apple-targets`) runs during `expo prebuild` and generates the actual Xcode widget extension target, wires up the App Group entitlement your main app and the extension both need to share data, and adds the presets you opted into.
+1. **The config plugin** (built on `@bacons/apple-targets`) runs during `expo prebuild` and generates the actual Xcode widget extension target from the sources shipped in the package, sets `NSSupportsLiveActivities` on your main app, and adds the presets you opted into.
 2. **The native bridge** (an Expo Module) is the thin Swift layer that translates your JS function calls into real `ActivityKit` calls (`Activity<Attributes>.request(attributes:content:)`, `.update(_:)`, `.end(_:dismissalPolicy:)`).
 3. **The preset SwiftUI views** are the pre-written, polished layouts that live inside the widget extension and render whatever content state you pushed from JS.
 
@@ -166,22 +166,20 @@ npx expo install expo-island-kit
 // app.json
 {
   "expo": {
-    "plugins": [
-      [
-        "expo-island-kit",
-        {
-          "appleTeamId": "YOUR_APPLE_TEAM_ID",
-          "groupIdentifier": "group.com.yourcompany.yourapp",
-          "presets": ["nowPlaying", "delivery"],
-          "enablePushNotifications": true
-        }
-      ]
-    ]
+    "ios": {
+      "bundleIdentifier": "com.yourcompany.yourapp",
+      "appleTeamId": "YOUR_APPLE_TEAM_ID"
+    },
+    "plugins": ["expo-island-kit"]
   }
 }
 ```
 
-See [Section 11](#11-configuration-reference-appjson) for every available option.
+That is the whole setup — IslandKit generates the widget extension target for you. **Do not also list `@bacons/apple-targets`**: IslandKit applies it internally, and listing both builds every target twice.
+
+**Known limitation:** `@bacons/apple-targets@5.0.0` (the newest published version, as of writing) cannot handle two targets of the same `type`. If your own `targets/` directory defines a second **widget** extension, prebuild will crash with a `removeFromProject` error — this does not affect other target types (e.g. `share`, `notification-content`), which are picked up fine alongside IslandKit's. If your app needs its own Widget, add it inside a single widget extension rather than maintaining a second `type: "widget"` target.
+
+To customise, pass options: `["expo-island-kit", { "presets": ["nowPlaying", "timer"] }]`. See [Section 11](#11-configuration-reference-appjson).
 
 ### 5.3 Prebuild
 
@@ -189,7 +187,7 @@ See [Section 11](#11-configuration-reference-appjson) for every available option
 npx expo prebuild -p ios --clean
 ```
 
-This generates your `ios/` folder, including the widget extension target, with entitlements and App Group wired up automatically.
+This generates your `ios/` folder, including the widget extension target, with `NSSupportsLiveActivities` set on your app automatically.
 
 ### 5.4 Build a dev client
 
@@ -309,7 +307,7 @@ start() → [one or more update() calls] → end()
 - A **push-to-start token** lets your server start a *new* Live Activity remotely, without the app being open (useful for e.g. "your order just shipped").
 - A **per-activity push token** lets your server `update()` or `end()` an *existing* activity remotely (useful for delivery ETA changes pushed from your backend rather than polled by the client).
 
-Both require `enablePushNotifications: true` in the config plugin and a properly configured APNs setup — see [Section 12](#12-remote-push-updates-apns).
+Both are planned to require `enablePushNotifications: true` in the config plugin and a properly configured APNs setup — but that option is **not yet available**: it is ignored (with a warning) today, since remote push needs a paid Apple Developer account. See [Section 11](#11-configuration-reference-appjson) / [Section 12](#12-remote-push-updates-apns).
 
 ### System-imposed limits
 
@@ -586,13 +584,10 @@ export function addUserInteractionListener(
       [
         "expo-island-kit",
         {
-          "appleTeamId": "ABCDE12345",
-          "groupIdentifier": "group.com.yourcompany.yourapp",
-          "bundleIdentifier": "com.yourcompany.yourapp.IslandKitExtension",
           "presets": ["nowPlaying", "delivery", "timer", "genericProgress"],
-          "enablePushNotifications": true,
-          "defaultAccentColor": "#FA2D48",
-          "deploymentTarget": "16.2"
+          "deploymentTarget": "16.2",
+          "bundleIdentifier": "com.yourcompany.yourapp.widget",
+          "defaultAccentColor": "#FA2D48"
         }
       ]
     ]
@@ -602,13 +597,14 @@ export function addUserInteractionListener(
 
 | Option | Default | Description |
 |---|---|---|
-| `appleTeamId` | — | Your Apple Developer Team ID. Required for code signing the extension target |
-| `groupIdentifier` | `group.<main app bundle id>` | App Group used to share data between your app and the widget extension |
-| `bundleIdentifier` | `<app bundle id>.IslandKitExtension` | Bundle ID for the generated widget extension target |
-| `presets` | all four | Which presets to include. Excluding unused presets reduces extension binary size and build time |
-| `enablePushNotifications` | `false` | Adds the `aps-environment` entitlement and enables push-to-start/per-activity token support |
-| `defaultAccentColor` | system default | Fallback tint used when a preset's `accentColor` prop is omitted |
-| `deploymentTarget` | `16.1` | Minimum iOS version for the extension target |
+| `presets` | all four | Which presets to include. Excluding unused presets reduces extension binary size and build time. **This only narrows what the widget extension renders — it does not remove any preset's JS API.** All four factories (`NowPlayingActivity`, `DeliveryActivity`, `TimerActivity`, `GenericProgressActivity`) are exported unconditionally; calling `.start()` on an excluded preset will still resolve with an activity id but nothing will render, because the generated extension has no `ActivityConfiguration` for it. Only list presets you exclude if you are sure your app never calls them |
+| `deploymentTarget` | `16.2` | Minimum iOS version for the extension target. IslandKit's ActivityKit code requires 16.2 |
+| `bundleIdentifier` | `<app bundle id>.widget` | Bundle ID for the generated widget extension target. Leave unset unless you have a reason — changing it requires re-provisioning |
+| `defaultAccentColor` | system accent | Fallback tint used when a preset's `accentColor` prop is omitted |
+
+**Not yet available.** `groupIdentifier` and `enablePushNotifications` are planned for the remote-push release and are ignored (with a warning) today — both need a paid Apple Developer account. Set your team via `ios.appleTeamId` rather than a plugin option; the widget target signs from it.
+
+The generated `targets/island-kit-widget/` directory is **build output**: it is overwritten on every `expo prebuild` and should be git-ignored. Do not edit it by hand.
 
 After changing any of these, re-run `npx expo prebuild --clean` to regenerate the native project.
 
@@ -773,8 +769,8 @@ Always branch your UI on `isDynamicIslandSupported` and `areLiveActivitiesEnable
 | OS < 16.1 | All factory methods return `undefined` from `start()` | Feature-detect with `NowPlayingActivity.isSupported()` before wiring up UI that depends on it |
 | App is force-quit while an activity is running | The activity keeps running (managed by the system), but you lose your JS reference to it | Persist `activity.id` yourself (e.g. AsyncStorage) if you need to reconnect and call `.update()`/`.end()` later |
 | Too many rapid `update()` calls | The system throttles / coalesces updates | Debounce update calls in your app code (see [Best Practices](#15-best-practices--performance)) |
-| Missing App Group entitlement | Native module throws on `start()` | Confirm `groupIdentifier` matches between the config plugin and re-run `prebuild --clean` |
-| Push token requested without `enablePushNotifications: true` | `getPushToken()` resolves `null` | Enable the flag in the config plugin and rebuild |
+| Missing App Group entitlement | Native module throws on `start()` | *(Not yet available — `groupIdentifier` is a planned remote-push option, ignored today; see §11.)* |
+| Push token requested without `enablePushNotifications: true` | `getPushToken()` resolves `null` | *(Not yet available — `enablePushNotifications` is a planned remote-push option, ignored today; see §11.)* |
 
 ---
 
@@ -819,7 +815,7 @@ Always branch your UI on `isDynamicIslandSupported` and `areLiveActivitiesEnable
 Check, in order: `areLiveActivitiesEnabled()`, that `NSSupportsLiveActivities` is `true` in the generated `Info.plist` (the config plugin sets this — confirm after `prebuild`), and that you're running a dev client/EAS build, not Expo Go.
 
 **Q: It works in the simulator but not on my device.**
-Almost always a code-signing / App Group mismatch. Confirm `appleTeamId` and `groupIdentifier` in your config match what's in your Apple Developer account, then `prebuild --clean` and rebuild.
+Almost always a code-signing mismatch. Confirm `appleTeamId` in your config matches what's in your Apple Developer account, then `prebuild --clean` and rebuild. (`groupIdentifier` is not yet a wired-up option — see §11.)
 
 **Q: Can I run this in Expo Go?**
 No. Live Activities require a compiled widget extension target, which Expo Go cannot include. A development build is mandatory.
@@ -831,7 +827,7 @@ Yes — different preset types can run concurrently. Within the *same* preset ty
 Live Activities are an iPhone-focused feature; iPad support is not part of ActivityKit as of this writing. Verify against current Apple documentation if this matters for your app.
 
 **Q: My push updates aren't arriving.**
-Confirm `enablePushNotifications: true` is set and you've rebuilt, that your APNs auth key has the ActivityKit push type enabled in your Apple Developer account, and that the `apns-topic` header exactly matches `<your bundle id>.push-type.liveactivity`.
+`enablePushNotifications` is not yet a wired-up config plugin option (see §11's "Not yet available" callout) — remote push is a future release. When it ships: confirm the flag is set and you've rebuilt, that your APNs auth key has the ActivityKit push type enabled in your Apple Developer account, and that the `apns-topic` header exactly matches `<your bundle id>.push-type.liveactivity`.
 
 ---
 
@@ -844,7 +840,9 @@ The repository ships an `apps/example` Expo app demonstrating all four presets:
 - **`/timer`** — a cook-timer UI using `TimerActivity`, including pause/resume
 - **`/upload`** — a fake file-upload progress screen using `GenericProgressActivity`
 
-Clone it, run `npx expo prebuild -p ios && npx expo run:ios`, and use it as a reference implementation when integrating IslandKit into your own app.
+The example consumes IslandKit exactly as any consumer does — via the `expo-island-kit` config plugin in `app.json` — and carries **no widget Swift in its tracked source**. `npx expo prebuild -p ios --clean` regenerates `apps/example/targets/island-kit-widget/` from the package before every build; that directory is git-ignored build output, not something checked into the repo.
+
+Clone it, run `npx expo prebuild -p ios --clean && npx expo run:ios`, and use it as a reference implementation when integrating IslandKit into your own app.
 
 ---
 
@@ -874,7 +872,7 @@ Check the compatibility table in the repository README before upgrading either E
 
 ## 21. Contributing
 
-Contributions are welcome, especially for new presets and Android parity. Before opening a PR:
+Contributions are welcome, especially for new presets. IslandKit is **iOS only** — Android support is not a project goal, so please don't open PRs adding Android code or config. Before opening a PR:
 
 1. Open an issue describing the preset or change first — native/Swift changes are expensive to review without agreement on scope
 2. New presets must include: the SwiftUI views for all Dynamic Island regions + Lock Screen banner, TypeScript types, a README section following the format in [Section 8](#8-presets--full-reference), and an example screen in `apps/example`

@@ -9,7 +9,7 @@
 **Tech Stack:** Expo SDK 55, `@expo/config-plugins` (`withInfoPlist` / `createRunOncePlugin`), `@bacons/apple-targets@5` (`withTargetsDir`), Swift / WidgetKit / ActivityKit, Node `fs`, Jest.
 
 **Spec:** `docs/superpowers/specs/2026-07-27-phase-6-config-plugin-design.md`
-**Branch:** `phase-6-config-plugin`, cut from the current `phase-4-delivery-timer` HEAD.
+**Branch:** `phase-6-config-plugin`, cut from `main` (97d82a1). Merges back into `main` through the CI gate as the first gated PR.
 
 ## Global Constraints
 
@@ -1378,7 +1378,7 @@ echo "=== full test suite ==="; CI=1 pnpm --filter expo-island-kit test 2>&1 | t
 echo "=== typecheck ==="; pnpm --filter expo-island-kit exec tsc --noEmit && echo "package tsc OK"
 cd apps/example && npx tsc --noEmit && echo "example tsc OK"; cd ..
 echo "=== abstraction zero-diff check (must be EMPTY) ==="
-git diff --stat phase-4-delivery-timer..HEAD -- \
+git diff --stat main..HEAD -- \
   packages/expo-island-kit/ios/core/ \
   packages/expo-island-kit/src/core/ \
   packages/expo-island-kit/ios/presets/ \
