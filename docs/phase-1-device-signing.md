@@ -8,11 +8,14 @@ hardware (iPhone 14 Pro or newer), do this once.
 ## Prerequisites (already true in this repo)
 
 - Project lives at a **space-free path** (`/Users/danemmanuel/Documents/islandkit`).
-  Do not move it back under a path containing spaces — RN 0.83.6's prebuilt-core
+  Do not move it back under a path containing spaces — React Native's prebuilt-core
   podspec builds a `file://` URI from the path and fails on spaces.
-- Pinned to **Expo SDK 55** (RN 0.83.6). This machine's Xcode is 26.0.1
-  (Swift 6.2.0); Expo SDK 56+ needs Xcode 26.4+ (Swift 6.3 `weak let`). Do not
-  bump the SDK past 55 until Xcode is upgraded to 26.4+.
+- On **Expo SDK 57** (RN 0.86.2). This machine's Xcode is 26.6 (Swift 6.3.3), past
+  the Xcode 26.4+ / Swift 6.3 (`weak let`) threshold that SDK 56+ requires — the
+  earlier SDK 55 pin is lifted.
+- Xcode 26.6 needs the **iOS 26.5 platform** installed (`xcodebuild -downloadPlatform
+  iOS`). A leftover older simulator runtime alone is not enough: without the matching
+  platform, `xcodebuild` reports *no eligible destinations* and refuses to build.
 
 ## Steps
 

@@ -23,7 +23,8 @@ through. Configure it to run **only on pull requests into `main`**, never on eve
 and consider `paths:` filters so it skips PRs that touch no Swift.
 
 **Constraint to respect when adding it:** the runner's Xcode version must be able to
-build Expo SDK 55. Xcode 26.0.1 is the local pin; SDK 56+ requires Xcode 26.4+. A
+build Expo SDK 57 — that means **Xcode 26.4+** (SDK 56+ needs Swift 6.3 for `weak let`).
+The local machine runs Xcode 26.6 / Swift 6.3.3. A
 GitHub-hosted macOS runner may ship a different Xcode than the local machine, so pin it
 explicitly with `maxim-lobanov/setup-xcode` rather than accepting the default.
 

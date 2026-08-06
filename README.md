@@ -37,8 +37,9 @@ for the one-time device-signing setup.
 
 ### Toolchain constraints
 
-- **Expo SDK 55** — pinned. SDK 56+ requires Xcode 26.4+ (`weak let`, Swift 6.3); the
-  development machine runs Xcode 26.0.1.
+- **Expo SDK 57** (React Native 0.86.2). SDK 56+ requires Xcode 26.4+ (`weak let`,
+  Swift 6.3); the development machine runs Xcode 26.6 / Swift 6.3.3, so the earlier
+  SDK 55 pin no longer applies.
 - **Node 22** — see `.nvmrc`.
 - **pnpm 10.17** — pinned via `packageManager`.
 
