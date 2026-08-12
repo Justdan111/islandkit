@@ -7,9 +7,20 @@ hardware (iPhone 14 Pro or newer), do this once.
 
 ## Prerequisites (already true in this repo)
 
-- Project lives at a **space-free path** (`/Users/danemmanuel/Documents/islandkit`).
-  Do not move it back under a path containing spaces — React Native's prebuilt-core
-  podspec builds a `file://` URI from the path and fails on spaces.
+- Project lives at a **space-free, non-cloud-synced path** (`/Users/danemmanuel/dev/islandkit`).
+  Two independent constraints apply, and the location must satisfy both:
+  - **No spaces.** React Native's prebuilt-core podspec builds a `file://` URI from
+    the path and fails on spaces.
+  - **No iCloud sync.** Under an iCloud-synced folder (`~/Documents` with "Desktop &
+    Documents Folders" on), iCloud stamps `com.apple.FinderInfo` onto build products
+    within ~30s. `codesign` then rejects the ExpoModulesJSI framework with *"resource
+    fork, Finder information, or similar detritus not allowed"* and the build fails.
+    Clearing attributes beforehand does not help — the stamping happens mid-build, and
+    the framework's DerivedData path is hardcoded inside `node_modules`.
+
+  Note: turning iCloud sync **off** does not leave files where they are — macOS empties
+  `~/Documents` and moves everything into `~/Library/Mobile Documents/…`, which is both
+  still iCloud and full of spaces. Back up or push before changing that setting.
 - On **Expo SDK 57** (RN 0.86.2). This machine's Xcode is 26.6 (Swift 6.3.3), past
   the Xcode 26.4+ / Swift 6.3 (`weak let`) threshold that SDK 56+ requires — the
   earlier SDK 55 pin is lifted.
