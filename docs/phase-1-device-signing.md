@@ -7,7 +7,8 @@ hardware (iPhone 14 Pro or newer), do this once.
 
 ## Prerequisites (already true in this repo)
 
-- Project lives at a **space-free, non-cloud-synced path** (`/Users/danemmanuel/dev/islandkit`).
+- Project lives at a **space-free, non-cloud-synced path** (`/Users/danemmanuel/Documents/islandkit`;
+  `~/Documents` is no longer iCloud-synced since "Desktop & Documents Folders" was turned off).
   Two independent constraints apply, and the location must satisfy both:
   - **No spaces.** React Native's prebuilt-core podspec builds a `file://` URI from
     the path and fails on spaces.
