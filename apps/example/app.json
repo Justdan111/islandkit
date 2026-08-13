@@ -4,6 +4,7 @@
     "slug": "example",
     "version": "1.0.0",
     "orientation": "portrait",
+    "scheme": "islandkitexample",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
@@ -13,7 +14,8 @@
     },
     "plugins": [
       "expo-island-kit",
-      "expo-status-bar"
+      "expo-status-bar",
+      "expo-router"
     ],
     "web": {
       "favicon": "./assets/favicon.png"
