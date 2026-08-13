@@ -11,7 +11,10 @@
       "appleTeamId": "A66QV2FW3V",
       "supportsTablet": false
     },
-    "plugins": ["expo-island-kit"],
+    "plugins": [
+      "expo-island-kit",
+      "expo-status-bar"
+    ],
     "web": {
       "favicon": "./assets/favicon.png"
     }
