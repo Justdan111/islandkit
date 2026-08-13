@@ -1,0 +1,131 @@
+name: Bug report
+description: Something in expo-island-kit doesn't work the way it's documented.
+title: "[bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Two quick checks first — they resolve most reports:
+
+        1. **Re-run `npx expo prebuild -p ios --clean`.** The widget target is generated
+           from the package at prebuild time, so an out-of-date target is the most common
+           cause of "my change didn't show up". Plain `prebuild` without `--clean` fails.
+        2. **Check the plugin's `presets` option.** Narrowing `presets` omits that
+           preset's widget from the generated target, while the TypeScript factory still
+           exists and `start()` still returns an instance — so an excluded preset renders
+           nothing, silently.
+
+  - type: checkboxes
+    id: prechecks
+    attributes:
+      label: Pre-flight checks
+      description: Please confirm both before filing.
+      options:
+        - label: I re-ran `npx expo prebuild -p ios --clean` and rebuilt the app.
+          required: true
+        - label: The affected preset is included in the plugin's `presets` option (or I left `presets` unset, which enables all four).
+          required: true
+
+  - type: input
+    id: package-version
+    attributes:
+      label: expo-island-kit version
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: input
+    id: expo-version
+    attributes:
+      label: Expo SDK version
+      placeholder: "57.0.10"
+    validations:
+      required: true
+
+  - type: input
+    id: ios-version
+    attributes:
+      label: iOS version
+      description: Minimum supported is iOS 16.2.
+      placeholder: "18.5"
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: Device or simulator
+      placeholder: "iPhone 14 Pro (physical device)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: dynamic-island
+    attributes:
+      label: Does that device have a Dynamic Island?
+      description: iPhone 14 Pro and newer. Without one, Live Activities still render on the Lock Screen only.
+      options:
+        - "Yes"
+        - "No"
+        - "Not sure"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: preset
+    attributes:
+      label: Which preset is affected?
+      options:
+        - Now Playing
+        - Generic Progress
+        - Delivery
+        - Timer
+        - Config plugin / setup
+        - Other or not preset-specific
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Include any Xcode console output or red-box errors.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: A minimal snippet of the props you passed to `start()` / `update()` helps a lot.
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: plugin-config
+    attributes:
+      label: Your plugin configuration
+      description: The `expo-island-kit` entry from your `app.json` / `app.config.js`.
+      render: json
+    validations:
+      required: false
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Screen recordings of the Dynamic Island are especially useful.
+    validations:
+      required: false

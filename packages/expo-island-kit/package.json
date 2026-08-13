@@ -26,7 +26,13 @@
     "react-native",
     "expo",
     "expo-island-kit",
-    "ExpoIslandKit"
+    "ExpoIslandKit",
+    "live-activities",
+    "dynamic-island",
+    "activitykit",
+    "widgetkit",
+    "ios",
+    "expo-plugin"
   ],
   "repository": "https://github.com/Justdan111/islandkit",
   "bugs": {
