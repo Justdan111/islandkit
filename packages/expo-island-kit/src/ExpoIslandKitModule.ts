@@ -1,13 +1,27 @@
 import { NativeModule, requireNativeModule } from 'expo';
 
+/**
+ * What the native `startLiveActivity` returns. `id` is empty exactly when the activity
+ * did not start, in which case `reason` says why; `detail` carries ActivityKit's own
+ * error text on the `system-refused` path.
+ */
+export interface StartLiveActivityResult {
+  id: string;
+  reason?: string | null;
+  detail?: string | null;
+}
+
 declare class ExpoIslandKitModule extends NativeModule<Record<string, never>> {
   areLiveActivitiesEnabled(): Promise<boolean>;
   isLiveActivitySupported(): boolean;
+  /** Throws for developer error (unknown or excluded preset). */
   startLiveActivity(
     preset: string,
     props: Record<string, unknown>,
     deepLinkUrl: string | null
-  ): string;
+  ): StartLiveActivityResult;
+  /** ActivityKit's own ids, which unlike the JS map survive app termination. */
+  getActiveActivityIds(preset: string): string[];
   updateLiveActivity(
     preset: string,
     activityId: string,

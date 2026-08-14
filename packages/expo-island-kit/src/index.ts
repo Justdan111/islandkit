@@ -18,3 +18,4 @@ export { GenericProgressActivity, type GenericProgressProps } from './presets/Ge
 export { DeliveryActivity, type DeliveryProps } from './presets/Delivery';
 export { TimerActivity, type TimerProps } from './presets/Timer';
 export type { DismissalPolicy, LiveActivityInstance, LiveActivityFactory } from './core/types';
+export { IslandKitError, type IslandKitFailureReason } from './core/IslandKitError';
