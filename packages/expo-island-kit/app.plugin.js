@@ -73,10 +73,15 @@ const withIslandKit = (config, options = {}) => {
 
   // MUST run before withTargetsDir globs targets/. Option validation happens inside
   // generateTarget and throws with the valid preset list.
-  generateTarget({ packageRoot: __dirname, projectRoot, options });
+  const { presetKeys } = generateTarget({ packageRoot: __dirname, projectRoot, options });
 
   config = withInfoPlist(config, (c) => {
     c.modResults.NSSupportsLiveActivities = true;
+    // Publish exactly the presets we generated widgets for. The native module reads this
+    // to tell "you never included that preset" apart from "that preset doesn't exist",
+    // instead of starting an activity no compiled widget can render. Taking the list from
+    // generateTarget's return value (rather than re-resolving it) makes drift impossible.
+    c.modResults.IslandKitIncludedPresets = presetKeys;
     return c;
   });
 

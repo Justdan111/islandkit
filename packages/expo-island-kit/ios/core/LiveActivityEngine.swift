@@ -5,17 +5,30 @@ import Foundation
 // type. All availability gating and error handling live here; handlers stay thin.
 @available(iOS 16.2, *)
 enum LiveActivityEngine {
-  static func start<A: ActivityAttributes>(_ attributes: A, _ state: A.ContentState) -> String {
-    guard ActivityAuthorizationInfo().areActivitiesEnabled else { return "" }
+  // Returns { "id": String, "reason": String? }. An empty id always carries a reason, so
+  // the caller can tell a disabled user toggle from ActivityKit refusing the request.
+  // Reason strings are part of the public contract — the TS layer matches them literally.
+  static func start<A: ActivityAttributes>(_ attributes: A, _ state: A.ContentState) -> [String: Any?] {
+    guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+      return ["id": "", "reason": "activities-disabled"]
+    }
     do {
       let activity = try Activity.request(
         attributes: attributes,
         content: ActivityContent(state: state, staleDate: nil)
       )
-      return activity.id
+      return ["id": activity.id, "reason": nil]
     } catch {
-      return ""
+      // Previously discarded entirely, which is why failure presented as silence.
+      NSLog("[IslandKit] Activity.request failed: \(error.localizedDescription)")
+      return ["id": "", "reason": "system-refused", "detail": error.localizedDescription]
     }
+  }
+
+  // ActivityKit is authoritative on which activities exist: its list includes activities
+  // started by a previous process and excludes ones the OS or the user dismissed.
+  static func activeIds<A: ActivityAttributes>(_ type: A.Type) -> [String] {
+    Activity<A>.activities.map { $0.id }
   }
 
   static func update<A: ActivityAttributes>(
