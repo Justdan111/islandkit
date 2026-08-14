@@ -57,8 +57,12 @@ beforeEach(() => {
   warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
   mockNative.isLiveActivitySupported.mockReturnValue(true);
   mockNative.startLiveActivity.mockReturnValue({ id: 'activity-1', reason: null });
+  // Purge each factory's in-process map. getActiveInstances() is native-driven now, so
+  // the shared fixture id has to be reported for the tracked entries to be reachable.
+  mockNative.getActiveActivityIds.mockReturnValue(['activity-1']);
   NowPlayingActivity.getActiveInstances().forEach((i) => i.end('immediate'));
   GenericProgressActivity.getActiveInstances().forEach((i) => i.end('immediate'));
+  mockNative.getActiveActivityIds.mockReturnValue([]);
   jest.clearAllMocks();
 });
 
@@ -92,9 +96,12 @@ test('update forwards (preset, id, partial props)', async () => {
 
 test("end maps 'immediate' and removes the instance", async () => {
   const instance = NowPlayingActivity.start(npProps);
+  mockNative.getActiveActivityIds.mockReturnValue(['activity-1']);
   expect(NowPlayingActivity.getActiveInstances()).toHaveLength(1);
   await instance.end('immediate');
   expect(mockNative.endLiveActivity).toHaveBeenCalledWith('nowPlaying', 'activity-1', 'immediate');
+  // ActivityKit stops listing an ended activity; getActiveInstances follows it.
+  mockNative.getActiveActivityIds.mockReturnValue([]);
   expect(NowPlayingActivity.getActiveInstances()).toHaveLength(0);
 });
 
@@ -145,6 +152,10 @@ test('a second preset reuses the factory under its own name with separate tracki
     'myapp://x'
   );
   expect(gp.id).toBe('activity-1');
+  // Each factory asks ActivityKit about its own preset, so the ids never cross over.
+  mockNative.getActiveActivityIds.mockImplementation((preset: string) =>
+    preset === 'genericProgress' ? ['activity-1'] : []
+  );
   expect(GenericProgressActivity.getActiveInstances()).toHaveLength(1);
   expect(NowPlayingActivity.getActiveInstances()).toHaveLength(0);
 });
@@ -317,4 +328,82 @@ test('does not inject defaults for absent optional props', () => {
     title: 'Upload',
     progress: 0.5,
   });
+});
+
+// --- getActiveInstances across processes ------------------------------------
+//
+// Two sources of truth: ActivityKit's own list (authoritative on existence) and the
+// in-process map (contributes identity only). Every failure mode here is quiet, so
+// each rule from the design spec's §6 gets its own test.
+
+test('getActiveInstances queries native with this factory preset name', () => {
+  mockNative.getActiveActivityIds.mockReturnValue([]);
+  GenericProgressActivity.getActiveInstances();
+  expect(mockNative.getActiveActivityIds).toHaveBeenCalledWith('genericProgress');
+});
+
+test('merges without duplicating an id present in both sources', () => {
+  const started = NowPlayingActivity.start(npProps);
+  mockNative.getActiveActivityIds.mockReturnValue(['activity-1']);
+  const instances = NowPlayingActivity.getActiveInstances();
+  expect(instances).toHaveLength(1);
+  // The tracked instance is reused rather than shadowed by a fresh handle.
+  expect(instances[0]).toBe(started);
+});
+
+test('materialises a native-only id as an instance that really ends that activity', async () => {
+  // Nothing in the JS map: this is an activity started by a previous app process.
+  mockNative.getActiveActivityIds.mockReturnValue(['prev-launch-1']);
+  const instances = NowPlayingActivity.getActiveInstances();
+  expect(instances).toHaveLength(1);
+  expect(instances[0].id).toBe('prev-launch-1');
+  expect(instances[0].reason).toBeUndefined();
+
+  await instances[0].end('immediate');
+  expect(mockNative.endLiveActivity).toHaveBeenCalledWith(
+    'nowPlaying',
+    'prev-launch-1',
+    'immediate'
+  );
+});
+
+test('a materialised native-only instance is also updatable', async () => {
+  mockNative.getActiveActivityIds.mockReturnValue(['prev-launch-2']);
+  const [instance] = NowPlayingActivity.getActiveInstances();
+  await instance.update({ isPlaying: false });
+  expect(mockNative.updateLiveActivity).toHaveBeenCalledWith('nowPlaying', 'prev-launch-2', {
+    isPlaying: false,
+  });
+});
+
+test('drops a JS-map id the native list no longer reports', () => {
+  NowPlayingActivity.start(npProps);
+  // The OS or the user dismissed it; a ghost here would silently no-op on end().
+  mockNative.getActiveActivityIds.mockReturnValue([]);
+  expect(NowPlayingActivity.getActiveInstances()).toHaveLength(0);
+});
+
+test('returns an empty array when native reports no activities', () => {
+  mockNative.getActiveActivityIds.mockReturnValue([]);
+  expect(NowPlayingActivity.getActiveInstances()).toEqual([]);
+});
+
+test('falls back to the in-process map when the native call throws', () => {
+  const started = NowPlayingActivity.start(npProps);
+  mockNative.getActiveActivityIds.mockImplementation(() => {
+    throw new Error('native unavailable');
+  });
+  let instances: ReturnType<typeof NowPlayingActivity.getActiveInstances> = [];
+  expect(() => {
+    instances = NowPlayingActivity.getActiveInstances();
+  }).not.toThrow();
+  expect(instances).toHaveLength(1);
+  expect(instances[0]).toBe(started);
+});
+
+test('returns an empty array off iOS without calling native', () => {
+  NowPlayingActivity.start(npProps);
+  mutablePlatform.OS = 'android';
+  expect(NowPlayingActivity.getActiveInstances()).toEqual([]);
+  expect(mockNative.getActiveActivityIds).not.toHaveBeenCalled();
 });

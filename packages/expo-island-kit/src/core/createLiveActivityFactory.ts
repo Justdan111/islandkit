@@ -169,7 +169,25 @@ export function createLiveActivityFactory<T extends object>(
     },
 
     getActiveInstances(): LiveActivityInstance<T>[] {
-      return Array.from(active.values());
+      if (Platform.OS !== 'ios') return [];
+
+      // Two sources of truth. ActivityKit's list is authoritative on existence — it
+      // outlives this process and reflects OS/user dismissals; the in-process map
+      // contributes nothing beyond identity for the activities we started ourselves.
+      let nativeIds: string[];
+      try {
+        nativeIds = ExpoIslandKitModule.getActiveActivityIds(preset);
+      } catch (error) {
+        // Losing the cross-process view is not worth breaking the caller over.
+        warnDev(`${preset}: could not read active activities from ActivityKit. ${String(error)}`);
+        return Array.from(active.values());
+      }
+
+      // Mapping over the native ids settles all four rules at once: stale map entries
+      // are dropped, an id in both sources yields the single tracked instance, and an
+      // id only ActivityKit knows (a previous launch) is materialised as a real,
+      // updatable and endable handle.
+      return nativeIds.map((id) => active.get(id) ?? new Instance(id));
     },
 
     isSupported(): boolean {
