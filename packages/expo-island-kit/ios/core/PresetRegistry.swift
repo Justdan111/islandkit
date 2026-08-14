@@ -6,7 +6,7 @@ protocol LiveActivityPresetHandler {
   var name: String { get }
   // Returns { "id": String, "reason": String? } — "" plus a reason when the environment
   // refused. Developer errors (unknown/excluded preset) throw in the module instead.
-  @available(iOS 16.2, *) func start(props: [String: Any], deepLinkUrl: String?) -> [String: Any?]
+  @available(iOS 16.2, *) func start(props: [String: Any], deepLinkUrl: String?) -> [String: Any]
   @available(iOS 16.2, *) func update(id: String, props: [String: Any]) async
   @available(iOS 16.2, *) func end(id: String, dismissalPolicy: String?) async
   // ActivityKit's own list, which survives app restarts — unlike any in-process map.

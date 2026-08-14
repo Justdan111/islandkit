@@ -30,7 +30,7 @@ public class ExpoIslandKitModule: Module {
     // (unknown or excluded preset) THROWS, because it can only be fixed in code; a
     // user/OS condition (old iOS, Live Activities switched off, ActivityKit refusing)
     // returns an empty id with a reason, because an app must not crash over a setting.
-    Function("startLiveActivity") { (preset: String, props: [String: Any], deepLinkUrl: String?) -> [String: Any?] in
+    Function("startLiveActivity") { (preset: String, props: [String: Any], deepLinkUrl: String?) -> [String: Any] in
       guard let handler = PresetRegistry.handler(preset) else {
         throw UnknownPresetException(preset)
       }

@@ -5,7 +5,7 @@ struct NowPlayingHandler: LiveActivityPresetHandler {
   let name = "nowPlaying"
 
   @available(iOS 16.2, *)
-  func start(props: [String: Any], deepLinkUrl: String?) -> [String: Any?] {
+  func start(props: [String: Any], deepLinkUrl: String?) -> [String: Any] {
     LiveActivityEngine.start(
       NowPlayingAttributes(deepLinkUrl: deepLinkUrl),
       Self.contentState(from: props, base: nil)

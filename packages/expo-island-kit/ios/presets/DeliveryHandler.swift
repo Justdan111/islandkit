@@ -5,7 +5,7 @@ struct DeliveryHandler: LiveActivityPresetHandler {
   let name = "delivery"
 
   @available(iOS 16.2, *)
-  func start(props: [String: Any], deepLinkUrl: String?) -> [String: Any?] {
+  func start(props: [String: Any], deepLinkUrl: String?) -> [String: Any] {
     let orderNumber = PropCoercion.string(props, "orderNumber", "")
     return LiveActivityEngine.start(
       DeliveryAttributes(orderNumber: orderNumber, deepLinkUrl: deepLinkUrl),

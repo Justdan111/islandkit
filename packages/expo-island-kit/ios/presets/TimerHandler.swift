@@ -5,7 +5,7 @@ struct TimerHandler: LiveActivityPresetHandler {
   let name = "timer"
 
   @available(iOS 16.2, *)
-  func start(props: [String: Any], deepLinkUrl: String?) -> [String: Any?] {
+  func start(props: [String: Any], deepLinkUrl: String?) -> [String: Any] {
     LiveActivityEngine.start(
       TimerAttributes(deepLinkUrl: deepLinkUrl),
       Self.contentState(from: props, base: nil)

@@ -5,7 +5,7 @@ struct GenericProgressHandler: LiveActivityPresetHandler {
   let name = "genericProgress"
 
   @available(iOS 16.2, *)
-  func start(props: [String: Any], deepLinkUrl: String?) -> [String: Any?] {
+  func start(props: [String: Any], deepLinkUrl: String?) -> [String: Any] {
     LiveActivityEngine.start(
       GenericProgressAttributes(deepLinkUrl: deepLinkUrl),
       Self.contentState(from: props, base: nil)

@@ -8,7 +8,7 @@ enum LiveActivityEngine {
   // Returns { "id": String, "reason": String? }. An empty id always carries a reason, so
   // the caller can tell a disabled user toggle from ActivityKit refusing the request.
   // Reason strings are part of the public contract — the TS layer matches them literally.
-  static func start<A: ActivityAttributes>(_ attributes: A, _ state: A.ContentState) -> [String: Any?] {
+  static func start<A: ActivityAttributes>(_ attributes: A, _ state: A.ContentState) -> [String: Any] {
     guard ActivityAuthorizationInfo().areActivitiesEnabled else {
       return ["id": "", "reason": "activities-disabled"]
     }
@@ -17,7 +17,10 @@ enum LiveActivityEngine {
         attributes: attributes,
         content: ActivityContent(state: state, staleDate: nil)
       )
-      return ["id": activity.id, "reason": nil]
+      // Success omits "reason" rather than sending an explicit nil: the dictionary is
+      // [String: Any], so a nil value would have to be boxed, and "absent" already
+      // means "no failure" on the JS side.
+      return ["id": activity.id]
     } catch {
       // Previously discarded entirely, which is why failure presented as silence.
       NSLog("[IslandKit] Activity.request failed: \(error.localizedDescription)")
