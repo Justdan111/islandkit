@@ -53,4 +53,16 @@ Deferred CI work is tracked in `docs/ci-deferred.md`.
 
 ## License
 
-MIT — see [LICENSE](packages/expo-island-kit/LICENSE).
+MIT — see [LICENSE](LICENSE).
+
+## Using the package
+
+This README is the contributor/monorepo view. If you want to *use* IslandKit in an app,
+the consumer documentation — install, per-preset quickstarts, the full props reference and
+the known limitations — lives in
+[`packages/expo-island-kit/README.md`](packages/expo-island-kit/README.md).
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, the checks CI enforces, and the
+re-prebuild step that catches people out after changing native or plugin code.

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Setup, usage and API reference
+    url: https://github.com/Justdan111/islandkit/blob/main/packages/expo-island-kit/README.md
+    about: Install steps, per-preset quickstarts, plugin options and known limitations.
+  - name: Contributing guide
+    url: https://github.com/Justdan111/islandkit/blob/main/CONTRIBUTING.md
+    about: Repo layout, the checks, the re-prebuild gotcha and how PRs are gated.
