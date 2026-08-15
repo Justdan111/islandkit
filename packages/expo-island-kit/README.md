@@ -200,12 +200,47 @@ interface LiveActivityFactory<T> {
 ```ts
 interface LiveActivityInstance<T> {
   readonly id: string;
+  readonly reason?: IslandKitFailureReason; // set only when id === ''
   update(props: Partial<T>): Promise<void>;
   end(dismissalPolicy?: DismissalPolicy, finalProps?: Partial<T>): Promise<void>;
 }
 ```
 
-`id` is the ActivityKit activity id, or `''` when the start failed (unsupported OS, Live Activities disabled, or a native error). A `''` handle still no-ops safely — check it if you want failures to be visible.
+`id` is the ActivityKit activity id, or `''` when the activity could not start — in which case `reason` says why. A `''` handle still no-ops safely, so you never have to null-check before calling `update`/`end`.
+
+### Failure: what throws and what doesn't
+
+IslandKit distinguishes **your** mistakes from **the user's** settings. Mistakes throw, because only a code change fixes them. Conditions the user or OS controls never throw — an app should not crash because someone turned a toggle off.
+
+```ts
+type IslandKitFailureReason =
+  | 'not-ios'              // running on a non-iOS platform
+  | 'unsupported-os'       // iOS older than 16.2
+  | 'activities-disabled'  // the user switched Live Activities off in Settings
+  | 'system-refused';      // ActivityKit rejected the request (e.g. too many active)
+
+class IslandKitError extends Error {
+  readonly code: 'unknown-preset' | 'preset-excluded';
+  readonly preset: string;
+}
+```
+
+| Situation | Behaviour |
+|---|---|
+| Preset name isn't a real preset | **throws** `IslandKitError` (`unknown-preset`) |
+| Preset excluded from the plugin's `presets` | **throws** `IslandKitError` (`preset-excluded`) |
+| Non-iOS platform, iOS < 16.2, user disabled, ActivityKit refused | inert instance: `id === ''`, `reason` set |
+
+The recommended pattern — no `try`/`catch` needed for the environmental cases:
+
+```ts
+const activity = NowPlayingActivity.start(props);
+if (!activity.id) {
+  console.log('Live Activity unavailable:', activity.reason);
+}
+```
+
+In development builds an inert start also logs a warning naming the reason, so it shows up in Metro without any code on your side.
 
 ### `DismissalPolicy`
 
@@ -260,6 +295,15 @@ type DismissalPolicy = 'default' | 'immediate' | { after: Date };
 | `isPaused` | `boolean` | no |
 | `accentColor` | `string` (hex) | no |
 
+### Prop validation
+
+Two values are checked before they reach the native layer, because both fail quietly otherwise:
+
+- **`progress` is clamped to `0`–`1`.** Out-of-range values render a broken bar rather than erroring, so they are clamped and warned about in development. `NaN` becomes `0`.
+- **A `Timer.endDate` in the past warns in development** but is not an error — a timer can legitimately expire between computing the date and starting the activity. The countdown renders as static remaining time rather than ticking.
+
+Optional props are deliberately **not** given default values. Absence is meaningful: on `update`, a prop you omit keeps its previous value, so injecting a default would silently overwrite state you meant to leave alone.
+
 ---
 
 ## Config plugin options
@@ -301,11 +345,10 @@ Related known issue: `@bacons/apple-targets@5.0.0` cannot handle two targets of 
 
 Read this section before filing a bug — most surprises are here.
 
-- **The `presets` footgun.** Narrowing `presets` omits that preset's widget from the generated target. The TypeScript factory still exists and `start()` still returns an instance, so **calling an excluded preset renders nothing, silently.** If a preset doesn't appear, check your `presets` array first.
-- **`getActiveInstances()` only sees activities started by the current app process.** Live Activities survive app termination, but instances from a previous launch are not returned, so they cannot be updated or ended through it. Workaround: track your own activity ids, or end activities before the app exits.
+- **Calling a preset you excluded throws.** Narrowing `presets` omits that preset's widget from the generated target, so there is nothing to render it. `start()` throws an `IslandKitError` naming the preset and the included list, rather than starting an invisible activity. If you narrow `presets`, remember to re-run `npx expo prebuild -p ios --clean`.
+- **`getActiveInstances()` is a query against iOS, not a view of your own state.** It returns what ActivityKit currently reports, so an activity the user or the system dismissed disappears from it even if your code started it. Using it as a local registry — `getActiveInstances().forEach((i) => i.end())` — will do nothing when iOS disagrees. Instances for activities you did not start in this process are new objects each call, so compare by `id`, not by reference.
 - **No push updates.** Updates come from the app process only. Push-driven updates require a paid Apple Developer account and are not implemented.
 - **No App Groups.** The App Groups capability is not added and is not supported.
-- **Native errors are currently coarse.** Failures degrade to a no-op with an empty activity id (`instance.id === ''`) rather than a descriptive error. If nothing appears, check the id before anything else.
 - **No theming and no animation control.** Layouts are fixed. `accentColor` is the only visual knob.
 - **The generated widget target is not customisable.** `targets/island-kit-widget/` is overwritten on every prebuild by design; there is no supported override or eject mechanism yet.
 - **The plugin regenerates `targets/island-kit-widget/` on any Expo config read** — `expo start`, `expo config`, `expo-doctor` and EAS config resolution all evaluate the plugin chain and rewrite it. The content is byte-identical each time, but mtimes change, so Xcode may recompile the widget more than strictly necessary; avoid running `expo start` concurrently with a build.
@@ -331,7 +374,6 @@ The widget target is generated *from the installed package version*, so an upgra
 - **v2: theming** — colours, fonts and layout variants beyond `accentColor`.
 - **v2: animations** — transition control for content-state changes.
 - **Push-driven updates** — updating an activity from your server via ActivityKit push tokens (requires a paid Apple Developer account).
-- Richer native error reporting to replace the current empty-id no-op.
 
 ---
 

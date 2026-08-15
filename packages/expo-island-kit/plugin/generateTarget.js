@@ -124,7 +124,8 @@ function copyFile(src, dest) {
  * @param {string} params.projectRoot  Root of the consumer's Expo project.
  * @param {object} [params.options]    Plugin options (presets, deploymentTarget,
  *                                     bundleIdentifier, defaultAccentColor).
- * @returns {{ dest: string, files: string[] }} Destination dir and sorted basenames written.
+ * @returns {{ dest: string, files: string[], presetKeys: string[] }} Destination dir, sorted
+ *          basenames written, and the resolved preset keys the widgets were generated for.
  */
 function generateTarget({ packageRoot, projectRoot, options = {} }) {
   const presetKeys = resolvePresetKeys(options.presets);
@@ -169,7 +170,16 @@ function generateTarget({ packageRoot, projectRoot, options = {} }) {
     files.push(file);
   }
 
-  return { dest, files: files.sort() };
+  // presetKeys is returned so the caller (app.plugin.js) can publish the exact same list
+  // to Info.plist. Recomputing it there would allow the plist and the generated widgets
+  // to drift; returning the resolved value makes that impossible.
+  return { dest, files: files.sort(), presetKeys };
 }
 
-module.exports = { generateTarget, TARGET_NAME, PRESETS, DEFAULT_DEPLOYMENT_TARGET };
+module.exports = {
+  generateTarget,
+  resolvePresetKeys,
+  TARGET_NAME,
+  PRESETS,
+  DEFAULT_DEPLOYMENT_TARGET,
+};
