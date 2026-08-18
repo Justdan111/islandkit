@@ -8,17 +8,31 @@ You install the package, add one config plugin, prebuild, and call a TypeScript 
 
 ## Demos
 
-<!-- MEDIA SLOT: now-playing.gif — device capture, iPhone 14 Pro, compact + expanded -->
-_Now Playing — recording coming soon._
+Recorded on an iPhone 14 Pro. Each clip starts the activity, leaves the app so the
+Dynamic Island takes over, and updates it live.
 
-<!-- MEDIA SLOT: generic-progress.gif — device capture, iPhone 14 Pro, compact + expanded -->
-_Generic Progress — recording coming soon._
+<!--
+  These URLs are absolute on purpose. This README is published to npm, and npm does not
+  resolve relative image paths — and the GIFs live in docs/, which is excluded from the
+  package tarball, so a relative path would point at nothing for an installed consumer.
+  They render once the repository is public; while it is private they will 404.
+-->
 
-<!-- MEDIA SLOT: delivery.gif — device capture, iPhone 14 Pro, compact + expanded -->
-_Delivery — recording coming soon._
+**Now Playing**
 
-<!-- MEDIA SLOT: timer.gif — device capture, iPhone 14 Pro, compact + expanded -->
-_Timer — recording coming soon._
+![Now Playing preset in the Dynamic Island](https://raw.githubusercontent.com/Justdan111/islandkit/main/docs/gif/nowplaying.gif)
+
+**Generic Progress**
+
+![Generic Progress preset in the Dynamic Island](https://raw.githubusercontent.com/Justdan111/islandkit/main/docs/gif/progress.gif)
+
+**Delivery**
+
+![Delivery preset in the Dynamic Island](https://raw.githubusercontent.com/Justdan111/islandkit/main/docs/gif/delivery.gif)
+
+**Timer**
+
+![Timer preset counting down in the Dynamic Island](https://raw.githubusercontent.com/Justdan111/islandkit/main/docs/gif/timer.gif)
 
 ---
 
