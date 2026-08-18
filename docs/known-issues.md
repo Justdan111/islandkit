@@ -8,7 +8,33 @@ For limitations that are working-as-designed and consumer-facing, see the
 
 ---
 
-## Deep-link tap-through lands on "route not found" in the example app
+## `NowPlayingProps.artworkAsset` is accepted but inert — needs resolving before v1 is widely adopted
+
+**Scope: the package's public API.** This is the one genuine API wart currently shipped.
+
+**What happens.** `artworkAsset` is declared on `NowPlayingProps`, accepted by `start()`,
+serialized across the bridge, coerced by `NowPlayingHandler`, and stored on
+`NowPlayingAttributes.ContentState` — a complete path from public type to widget state.
+No widget then reads it. `NowPlayingLiveActivity` draws `artworkUrl` only, falling back
+to a placeholder when it is absent.
+
+**Why it matters.** The prop is in the published types, so it surfaces in autocomplete
+and reads as supported. A consumer who sets it gets no artwork, no warning and no error
+— the failure is indistinguishable from having passed nothing. It is currently recorded
+under the README's known limitations so adopters are not misled, but documentation is a
+mitigation, not a resolution.
+
+**Resolution — pick one, do not leave it as-is:**
+
+1. **Wire it up.** Render a bundled asset by name in the widget. This is the larger
+   option and is the natural companion to the bundled-image support already on the
+   [v2 roadmap](./roadmap-v2.md) — doing both together is cheaper than doing either
+   twice, and it is the outcome consumers expect from the prop's name.
+2. **Remove it** from `NowPlayingProps`, the handler and the Attributes struct. Cheap,
+   honest, and a breaking change — so it is far cheaper before v1 is widely adopted than
+   after.
+
+Shipping an accepted-but-inert prop in a published API is worse than either.
 
 **Scope: the example app only. Not a package defect.** Should be fixed before the repo
 goes public, since the example is the first thing a visitor runs.
