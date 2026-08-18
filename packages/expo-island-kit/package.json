@@ -7,6 +7,7 @@
   "files": [
     "app.plugin.js",
     "build",
+    "!build/**/*.map",
     "ios",
     "plugin",
     "!plugin/__tests__",
