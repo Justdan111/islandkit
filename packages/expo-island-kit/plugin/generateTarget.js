@@ -9,8 +9,8 @@ const path = require('path');
 const TARGET_NAME = 'island-kit-widget';
 const DEFAULT_DEPLOYMENT_TARGET = '16.2';
 
-// One row per preset. Adding a fifth preset is a one-line change here — the same
-// abstraction bar the Phase-3 registry holds on the native side.
+// One row per preset. Adding a fifth preset is a one-line change here, matching the
+// one-line registration the native PresetRegistry needs.
 const PRESETS = {
   nowPlaying: {
     widgetFile: 'NowPlayingLiveActivity.swift',
