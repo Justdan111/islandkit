@@ -7,6 +7,7 @@
   "files": [
     "app.plugin.js",
     "build",
+    "!build/**/*.map",
     "ios",
     "plugin",
     "!plugin/__tests__",
@@ -19,8 +20,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.check.json",
     "test": "node internal/module_scripts/test.js",
     "prepare": "node internal/module_scripts/prepare.js",
-    "open:ios": "node internal/module_scripts/open-ios.js",
-    "open:android": "node internal/module_scripts/open-android.js"
+    "open:ios": "node internal/module_scripts/open-ios.js"
   },
   "keywords": [
     "react-native",

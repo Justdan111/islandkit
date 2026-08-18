@@ -49,6 +49,68 @@ Dynamic Island takes over, and updates it live.
 
 ---
 
+## Quick start
+
+Four steps, start to a live Dynamic Island. Works the same in **JavaScript and
+TypeScript** — types ship with the package, so TS users get autocomplete without
+installing anything extra.
+
+**1. Install**
+
+```bash
+npx expo install expo-island-kit
+```
+
+**2. Add the plugin to `app.json`, listing the presets you want**
+
+```json
+{
+  "expo": {
+    "plugins": [
+      ["expo-island-kit", { "presets": ["genericProgress", "timer"] }]
+    ]
+  }
+}
+```
+
+Only the presets you list get a widget built. Omit `presets` entirely to get all four.
+Calling a preset you left out throws — see [Known limitations](#known-limitations).
+
+**3. Prebuild**
+
+```bash
+npx expo prebuild -p ios --clean
+```
+
+**4. Start, update, end**
+
+```ts
+import { GenericProgressActivity } from 'expo-island-kit';
+
+// start() is synchronous and returns a handle immediately.
+const upload = GenericProgressActivity.start({
+  title: 'Uploading backup',
+  subtitle: '0 of 400 photos',
+  progress: 0,
+  iconSystemName: 'icloud.and.arrow.up',
+  accentColor: '#0A84FF',
+});
+
+if (!upload.id) {
+  // Not an error you have to handle — the handle below still no-ops safely.
+  console.log('Live Activity unavailable:', upload.reason);
+}
+
+// update() and end() are async.
+await upload.update({ progress: 0.5, subtitle: '200 of 400 photos' });
+await upload.end('immediate');
+```
+
+Run it on a real device or an iPhone 14 Pro-class simulator, then leave the app —
+the Dynamic Island only shows the activity while your app is backgrounded.
+
+---
+
 ## Install
 
 ```bash
@@ -184,6 +246,70 @@ if (TimerActivity.isSupported() && (await areLiveActivitiesEnabled())) {
   TimerActivity.start({ label: 'Tea', endDate: new Date(Date.now() + 180_000) });
 }
 ```
+
+---
+
+## Images and icons
+
+### A system icon (SF Symbol)
+
+`GenericProgressProps.iconSystemName` takes an SF Symbol name. Anything in Apple's
+[SF Symbols](https://developer.apple.com/sf-symbols/) catalogue works — the string must
+match the symbol name exactly, and an unknown name renders nothing.
+
+```ts
+GenericProgressActivity.start({
+  title: 'Uploading backup',
+  progress: 0.32,
+  iconSystemName: 'icloud.and.arrow.up', // also e.g. 'arrow.down.circle.fill', 'square.and.arrow.up'
+  accentColor: '#0A84FF',
+});
+```
+
+### A remote image by URL
+
+Two presets take a remote image: `NowPlayingProps.artworkUrl` and
+`DeliveryProps.mapSnapshotUrl`. Both are plain `https://` strings, loaded by the widget
+at render time.
+
+```ts
+NowPlayingActivity.start({
+  title: 'Midnight City',
+  artist: 'M83',
+  artworkUrl: 'https://example.com/art/midnight-city-256.jpg',
+  isPlaying: true,
+  elapsedSeconds: 12,
+  durationSeconds: 231,
+});
+
+DeliveryActivity.start({
+  orderNumber: '#48213',
+  status: 'onTheWay',
+  etaMinutes: 12,
+  mapSnapshotUrl: 'https://example.com/snapshots/48213-480w.png',
+});
+```
+
+Both are optional. Omit them and the preset renders its own placeholder rather than
+failing.
+
+### Keep images small — this is Apple's constraint, not IslandKit's
+
+The Dynamic Island and Lock Screen banner are drawn by a **widget extension**, which iOS
+runs under a hard memory limit far tighter than your app's. Decoding a large image can
+exceed it, and when that happens the system kills the extension — the symptom is an
+activity that renders blank or vanishes, with no error in your JS.
+
+Practical guidance:
+
+- Serve images already sized for the slot. Artwork is displayed small; a 256×256 asset
+  is plenty, and a 3000×3000 original is a liability.
+- Prefer compressed JPEG/PNG over anything large or progressive.
+- Remote images are fetched over the network at render time, so a slow or failing URL
+  shows the placeholder instead. Don't rely on one being available instantly.
+
+**Bundled/local image assets are not supported yet.** Remote URLs are the only image
+input that reaches the widget today; see [Known limitations](#known-limitations).
 
 ---
 
@@ -363,6 +489,7 @@ Read this section before filing a bug — most surprises are here.
 - **`getActiveInstances()` is a query against iOS, not a view of your own state.** It returns what ActivityKit currently reports, so an activity the user or the system dismissed disappears from it even if your code started it. Using it as a local registry — `getActiveInstances().forEach((i) => i.end())` — will do nothing when iOS disagrees. Instances for activities you did not start in this process are new objects each call, so compare by `id`, not by reference.
 - **No push updates.** Updates come from the app process only. Push-driven updates require a paid Apple Developer account and are not implemented.
 - **No App Groups.** The App Groups capability is not added and is not supported.
+- **`NowPlayingProps.artworkAsset` is accepted but does nothing.** The prop exists in the types and is carried all the way to the widget's content state, but no preset renders it — only `artworkUrl` is drawn. Use a remote URL for artwork; bundled-asset support is on the roadmap.
 - **No theming and no animation control.** Layouts are fixed. `accentColor` is the only visual knob.
 - **The generated widget target is not customisable.** `targets/island-kit-widget/` is overwritten on every prebuild by design; there is no supported override or eject mechanism yet.
 - **The plugin regenerates `targets/island-kit-widget/` on any Expo config read** — `expo start`, `expo config`, `expo-doctor` and EAS config resolution all evaluate the plugin chain and rewrite it. The content is byte-identical each time, but mtimes change, so Xcode may recompile the widget more than strictly necessary; avoid running `expo start` concurrently with a build.

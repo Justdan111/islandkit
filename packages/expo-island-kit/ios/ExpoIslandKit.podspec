@@ -1,10 +1,10 @@
 Pod::Spec.new do |s|
   s.name           = 'ExpoIslandKit'
   s.version        = '1.0.0'
-  s.summary        = 'A sample project summary'
-  s.description    = 'A sample project description'
-  s.author         = ''
-  s.homepage       = 'https://docs.expo.dev/modules/'
+  s.summary        = 'Drop-in iOS Live Activities and Dynamic Island presets for Expo'
+  s.description    = 'Pre-built Live Activity and Dynamic Island presets — Now Playing, Generic Progress, Delivery and Timer — with a TypeScript-only API.'
+  s.author         = 'Justdan111'
+  s.homepage       = 'https://github.com/Justdan111/islandkit'
   # iOS-only. Deployment target is kept low so the module can be linked into
   # apps supporting older iOS; the Live Activities / ActivityKit code is guarded
   # with `@available(iOS 16.1, *)` and no-ops below it (graceful degradation).

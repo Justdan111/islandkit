@@ -1,11 +1,9 @@
 import ActivityKit
 import Foundation
 
-// NOTE: This struct is duplicated verbatim in the widget target
-// (apps/example/targets/island-kit-widget/NowPlayingAttributes.swift).
-// ActivityKit requires the same ActivityAttributes type in both the app and
-// the widget extension. Keep the two files byte-for-byte identical.
-// Phase 3 will extract this into a shared location to remove the duplication.
+// Compiled into BOTH the app (pod) target and the widget target (via a symlink under
+// apps/example/targets/island-kit-widget/) — ActivityKit requires the same
+// ActivityAttributes type in both the app and the widget extension.
 public struct NowPlayingAttributes: ActivityAttributes {
   public struct ContentState: Codable, Hashable {
     public var title: String
