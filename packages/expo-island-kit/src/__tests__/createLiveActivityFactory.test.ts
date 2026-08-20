@@ -18,6 +18,7 @@ jest.mock('../ExpoIslandKitModule', () => {
       })
     ),
     getActiveActivityIds: jest.fn((_preset: string) => [] as string[]),
+    getBundledAssetNames: jest.fn(() => null as string[] | null),
     updateLiveActivity: jest.fn(async () => {}),
     endLiveActivity: jest.fn(async () => {}),
     areLiveActivitiesEnabled: jest.fn(async () => true),
@@ -29,6 +30,7 @@ const mockNative = ExpoIslandKitModule as unknown as {
   isLiveActivitySupported: jest.Mock;
   startLiveActivity: jest.Mock;
   getActiveActivityIds: jest.Mock;
+  getBundledAssetNames: jest.Mock;
   updateLiveActivity: jest.Mock;
   endLiveActivity: jest.Mock;
   areLiveActivitiesEnabled: jest.Mock;
@@ -406,4 +408,67 @@ test('returns an empty array off iOS without calling native', () => {
   mutablePlatform.OS = 'android';
   expect(NowPlayingActivity.getActiveInstances()).toEqual([]);
   expect(mockNative.getActiveActivityIds).not.toHaveBeenCalled();
+});
+
+describe('artworkAsset diagnostics', () => {
+  beforeEach(() => {
+    mockNative.getBundledAssetNames.mockReturnValue(null);
+  });
+
+  it('warns when artworkAsset names an image that was not bundled', () => {
+    mockNative.getBundledAssetNames.mockReturnValue(['cover.png']);
+    NowPlayingActivity.start({ ...npProps, artworkAsset: 'missing.png' });
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('artworkAsset "missing.png" is not bundled')
+    );
+    // The message has to name the fix, not just the symptom.
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('cover.png'));
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('prebuild -p ios --clean'));
+  });
+
+  it('stays quiet when artworkAsset names a bundled image', () => {
+    mockNative.getBundledAssetNames.mockReturnValue(['cover.png']);
+    NowPlayingActivity.start({ ...npProps, artworkAsset: 'cover.png' });
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it('stays quiet when the bundled list is unavailable, rather than warning on a guess', () => {
+    // null = prebuilt by a version that never published the list. Unknown, not empty.
+    mockNative.getBundledAssetNames.mockReturnValue(null);
+    NowPlayingActivity.start({ ...npProps, artworkAsset: 'anything.png' });
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it('warns that the bundled asset wins when both artworkAsset and artworkUrl are set', () => {
+    mockNative.getBundledAssetNames.mockReturnValue(['cover.png']);
+    NowPlayingActivity.start({
+      ...npProps,
+      artworkAsset: 'cover.png',
+      artworkUrl: 'https://example.com/a.png',
+    });
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('both artworkAsset and artworkUrl are set')
+    );
+  });
+
+  it('does not consult the bundled list when artworkAsset is absent', () => {
+    NowPlayingActivity.start({ ...npProps, artworkUrl: 'https://example.com/a.png' });
+    expect(mockNative.getBundledAssetNames).not.toHaveBeenCalled();
+  });
+
+  it('suppresses artworkAsset warnings outside __DEV__', () => {
+    globals.__DEV__ = false;
+    mockNative.getBundledAssetNames.mockReturnValue(['cover.png']);
+    NowPlayingActivity.start({ ...npProps, artworkAsset: 'missing.png' });
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it('degrades quietly when the native lookup throws', () => {
+    mockNative.getBundledAssetNames.mockImplementation(() => {
+      throw new Error('no native module');
+    });
+    expect(() => NowPlayingActivity.start({ ...npProps, artworkAsset: 'x.png' })).not.toThrow();
+    expect(warnSpy).not.toHaveBeenCalledWith(expect.stringContaining('is not bundled'));
+  });
 });

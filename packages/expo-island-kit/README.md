@@ -266,6 +266,64 @@ GenericProgressActivity.start({
 });
 ```
 
+### A bundled image
+
+`NowPlayingProps.artworkAsset` renders an image compiled into the widget extension.
+Bundling takes two steps, and the link between them is the **filename**.
+
+**1. Declare the file in the plugin's `assets` option** (paths resolve from your project
+root):
+
+```json
+{
+  "expo": {
+    "plugins": [
+      ["expo-island-kit", { "assets": ["./assets/cover.png"] }]
+    ]
+  }
+}
+```
+
+**2. Pass its filename at runtime:**
+
+```ts
+NowPlayingActivity.start({
+  title: 'Midnight City',
+  artist: 'M83',
+  artworkAsset: 'cover.png', // the basename of what you declared above
+  isPlaying: true,
+  elapsedSeconds: 12,
+  durationSeconds: 231,
+});
+```
+
+Assets are copied **flat** into the widget target, so `./assets/cover.png`,
+`./deep/nested/cover.png` and `./cover.png` all become `cover.png`. Two declared files
+that share a filename would collide, so prebuild fails with an error naming both instead
+of silently bundling one.
+
+**Re-run `npx expo prebuild -p ios --clean` after changing `assets`** — and note the
+ordering: prebuild must complete *before* the Xcode build. A build that generates the
+asset partway through will finish without it, because the widget target's resource list
+was already decided. The normal `prebuild` → build flow is correct; the trap is only
+hit by builds that skip prebuild.
+
+If `artworkAsset` names a file you never declared, nothing renders — so IslandKit warns
+in development, naming the assets that *are* bundled:
+
+```
+[IslandKit] nowPlaying: artworkAsset "missing.png" is not bundled, so no image will
+render. Bundled assets: cover.png. Add it to the plugin's "assets" option and re-run:
+npx expo prebuild -p ios --clean
+```
+
+**`artworkAsset` takes precedence over `artworkUrl`** when both are set, and IslandKit
+warns in development so the precedence isn't a surprise. Bundled wins because it loads
+synchronously from the extension's own bundle and cannot fail on a slow or dead network.
+
+No App Groups or paid Apple Developer capability is involved: the image is compiled into
+the extension at build time rather than shared between processes at runtime.
+
 ### A remote image by URL
 
 Two presets take a remote image: `NowPlayingProps.artworkUrl` and
@@ -307,9 +365,9 @@ Practical guidance:
 - Prefer compressed JPEG/PNG over anything large or progressive.
 - Remote images are fetched over the network at render time, so a slow or failing URL
   shows the placeholder instead. Don't rely on one being available instantly.
-
-**Bundled/local image assets are not supported yet.** Remote URLs are the only image
-input that reaches the widget today; see [Known limitations](#known-limitations).
+- A bundled image avoids the network entirely, but it is still decoded inside the same
+  memory-limited extension — bundling a huge PNG is no safer than fetching one. Size it
+  for the slot either way.
 
 ---
 
@@ -464,6 +522,7 @@ Optional props are deliberately **not** given default values. Absence is meaning
 | `deploymentTarget` | `'16.2'` | widget target's iOS deployment target |
 | `bundleIdentifier` | `<appId>.widget` | omitted by default so apple-targets' derived id is preserved |
 | `defaultAccentColor` | `nil` | fallback accent when a preset omits `accentColor` |
+| `assets` | `[]` | image paths (from the project root) to bundle into the widget extension; refer to them by filename via `artworkAsset` |
 
 Valid `presets` keys: `nowPlaying`, `genericProgress`, `delivery`, `timer`.
 
@@ -489,7 +548,6 @@ Read this section before filing a bug — most surprises are here.
 - **`getActiveInstances()` is a query against iOS, not a view of your own state.** It returns what ActivityKit currently reports, so an activity the user or the system dismissed disappears from it even if your code started it. Using it as a local registry — `getActiveInstances().forEach((i) => i.end())` — will do nothing when iOS disagrees. Instances for activities you did not start in this process are new objects each call, so compare by `id`, not by reference.
 - **No push updates.** Updates come from the app process only. Push-driven updates require a paid Apple Developer account and are not implemented.
 - **No App Groups.** The App Groups capability is not added and is not supported.
-- **`NowPlayingProps.artworkAsset` is accepted but does nothing.** The prop exists in the types and is carried all the way to the widget's content state, but no preset renders it — only `artworkUrl` is drawn. Use a remote URL for artwork; bundled-asset support is on the roadmap.
 - **No theming and no animation control.** Layouts are fixed. `accentColor` is the only visual knob.
 - **The generated widget target is not customisable.** `targets/island-kit-widget/` is overwritten on every prebuild by design; there is no supported override or eject mechanism yet.
 - **The plugin regenerates `targets/island-kit-widget/` on any Expo config read** — `expo start`, `expo config`, `expo-doctor` and EAS config resolution all evaluate the plugin chain and rewrite it. The content is byte-identical each time, but mtimes change, so Xcode may recompile the widget more than strictly necessary; avoid running `expo start` concurrently with a build.

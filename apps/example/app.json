@@ -13,7 +13,14 @@
       "supportsTablet": false
     },
     "plugins": [
-      "expo-island-kit",
+      [
+        "expo-island-kit",
+        {
+          "assets": [
+            "./assets/demo-artwork.png"
+          ]
+        }
+      ],
       "expo-status-bar",
       "expo-router"
     ],

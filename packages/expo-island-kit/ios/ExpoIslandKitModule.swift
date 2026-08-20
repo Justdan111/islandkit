@@ -43,6 +43,13 @@ public class ExpoIslandKitModule: Module {
       return handler.start(props: props, deepLinkUrl: deepLinkUrl)
     }
 
+    // The images the plugin's `assets` option bundled into the widget extension.
+    // Returns nil when the Info.plist key is absent (an app prebuilt by an older
+    // IslandKit), so the JS layer can stay quiet rather than warn on a false negative.
+    Function("getBundledAssetNames") { () -> [String]? in
+      BundledAssets.names
+    }
+
     // ActivityKit's own list, which unlike the JS-side map survives app termination.
     Function("getActiveActivityIds") { (preset: String) -> [String] in
       guard #available(iOS 16.2, *), let handler = PresetRegistry.handler(preset) else { return [] }

@@ -12,7 +12,9 @@ const DURATION = 231;
 const nowPlayingProps: NowPlayingProps = {
   title: 'Midnight City',
   artist: 'M83',
-  artworkUrl: 'https://picsum.photos/seed/islandkit/300',
+  // Bundled via the plugin's `assets` option in app.json. The string is the basename of
+  // the declared path, and it takes precedence over artworkUrl.
+  artworkAsset: 'demo-artwork.png',
   isPlaying: true,
   elapsedSeconds: 12,
   durationSeconds: DURATION,

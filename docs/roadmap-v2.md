@@ -37,14 +37,15 @@ the toggle exists for consumers who need motion-reduced or static presentation.
 
 ## Richer per-preset icon and image customization
 
-More image/icon slots per preset, and possibly **bundled-asset support**.
+More image/icon slots per preset.
 
-Related known defect to fix as part of this, not separately: `NowPlayingProps
-.artworkAsset` already exists in the public API and is carried all the way into the
-widget's content state, but no widget reads it — only `artworkUrl` is drawn. It is
-documented under README known limitations. v2 should either implement it or remove it
-from the public types; leaving an accepted-but-inert prop in a published API is the
-worst of the three options.
+**Bundled-asset support shipped in v1** — the config plugin's `assets` option copies
+images into the widget extension's own bundle and `NowPlayingProps.artworkAsset` renders
+them, which resolved the accepted-but-inert prop this entry used to track. What remains
+for v2 is breadth, not mechanism: bundled images for the other presets (Delivery's map
+slot, a Generic Progress icon override) and per-preset control over how an image is
+cropped or masked. The build-time bundling mechanism is proven and needs no App Groups,
+so the remaining work is layout and API surface.
 
 ## Deferred visual polish
 

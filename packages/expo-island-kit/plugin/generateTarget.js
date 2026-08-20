@@ -116,6 +116,55 @@ function copyFile(src, dest) {
   fs.copyFileSync(src, dest);
 }
 
+
+// Consumer-declared images to bundle into the widget extension.
+//
+// The extension is a separate process with its own bundle, so it cannot read files from
+// the app's sandbox. Copying the image into the target directory makes Xcode compile it
+// into the extension's OWN bundle, which is why this works with no App Groups and no
+// paid capability -- the asset is baked in at build time rather than shared at runtime.
+//
+// Files are copied FLAT, so the name a consumer passes to `artworkAsset` at runtime is
+// the basename of what they declared: assets: ['./assets/cover.png'] -> 'cover.png'.
+function resolveAssets(assets, projectRoot) {
+  if (assets === undefined) return [];
+  if (!Array.isArray(assets)) {
+    throw new Error(`expo-island-kit: "assets" must be an array, received ${typeof assets}.`);
+  }
+
+  const resolved = [];
+  const seen = new Map();
+
+  for (const entry of assets) {
+    if (typeof entry !== 'string' || entry.trim() === '') {
+      throw new Error(
+        `expo-island-kit: every "assets" entry must be a non-empty string, received ${JSON.stringify(entry)}.`
+      );
+    }
+    const src = path.resolve(projectRoot, entry);
+    if (!fs.existsSync(src)) {
+      throw new Error(
+        `expo-island-kit: asset "${entry}" was not found at ${src}. ` +
+          'Paths are resolved from the project root.'
+      );
+    }
+    const name = path.basename(src);
+    // Flat copying means two different paths ending in the same filename would silently
+    // clobber each other, and only one would ever be reachable by `artworkAsset`.
+    if (seen.has(name)) {
+      throw new Error(
+        `expo-island-kit: two "assets" entries resolve to the same filename "${name}" ` +
+          `("${seen.get(name)}" and "${entry}"). Rename one -- assets are bundled flat, ` +
+          'so the filename is what `artworkAsset` refers to.'
+      );
+    }
+    seen.set(name, entry);
+    resolved.push({ src, name });
+  }
+
+  return resolved;
+}
+
 /**
  * Generate the widget extension target into <projectRoot>/targets/island-kit-widget/.
  *
@@ -123,12 +172,16 @@ function copyFile(src, dest) {
  * @param {string} params.packageRoot  Root of the expo-island-kit package.
  * @param {string} params.projectRoot  Root of the consumer's Expo project.
  * @param {object} [params.options]    Plugin options (presets, deploymentTarget,
- *                                     bundleIdentifier, defaultAccentColor).
- * @returns {{ dest: string, files: string[], presetKeys: string[] }} Destination dir, sorted
- *          basenames written, and the resolved preset keys the widgets were generated for.
+ *                                     bundleIdentifier, defaultAccentColor, assets).
+ * @returns {{ dest: string, files: string[], presetKeys: string[], assetNames: string[] }}
+ *          Destination dir, sorted basenames written, the resolved preset keys, and the
+ *          bundled asset filenames `artworkAsset` can refer to.
  */
 function generateTarget({ packageRoot, projectRoot, options = {} }) {
   const presetKeys = resolvePresetKeys(options.presets);
+  // Resolved before the destination is wiped so a bad path fails without destroying a
+  // working target directory.
+  const assets = resolveAssets(options.assets, projectRoot);
 
   const widgetSrc = path.join(packageRoot, 'plugin', 'widget');
   const attributesSrc = path.join(packageRoot, 'ios', 'shared');
@@ -156,6 +209,11 @@ function generateTarget({ packageRoot, projectRoot, options = {} }) {
     files.push(widgetFile, attributesFile);
   }
 
+  for (const { src, name } of assets) {
+    copyFile(src, path.join(dest, name));
+    files.push(name);
+  }
+
   const generated = {
     'expo-target.config.js': renderTargetConfig({
       deploymentTarget: options.deploymentTarget || DEFAULT_DEPLOYMENT_TARGET,
@@ -173,12 +231,13 @@ function generateTarget({ packageRoot, projectRoot, options = {} }) {
   // presetKeys is returned so the caller (app.plugin.js) can publish the exact same list
   // to Info.plist. Recomputing it there would allow the plist and the generated widgets
   // to drift; returning the resolved value makes that impossible.
-  return { dest, files: files.sort(), presetKeys };
+  return { dest, files: files.sort(), presetKeys, assetNames: assets.map((a) => a.name).sort() };
 }
 
 module.exports = {
   generateTarget,
   resolvePresetKeys,
+  resolveAssets,
   TARGET_NAME,
   PRESETS,
   DEFAULT_DEPLOYMENT_TARGET,

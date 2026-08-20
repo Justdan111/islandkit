@@ -24,6 +24,9 @@ export default {
   ): StartLiveActivityResult {
     return { id: '', reason: 'not-ios' };
   },
+  getBundledAssetNames(): string[] | null {
+    return null;
+  },
   getActiveActivityIds(_preset: string): string[] {
     return [];
   },
