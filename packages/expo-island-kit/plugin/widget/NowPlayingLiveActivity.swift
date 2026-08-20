@@ -1,13 +1,22 @@
 import ActivityKit
 import WidgetKit
 import SwiftUI
+import UIKit
 
-// Square artwork: remote image when a URL is present, else an SF Symbol placeholder.
+// Square artwork, in precedence order: a bundled asset, then a remote URL, then an SF
+// Symbol placeholder.
+//
+// `artworkAsset` wins over `artworkUrl` deliberately. A bundled image is already inside
+// this extension's bundle, so it loads synchronously and cannot fail on a slow or dead
+// network -- in a memory- and time-constrained widget process that is the more reliable
+// input, so when a consumer supplies both, the reliable one is used.
 private struct Artwork: View {
   let state: NowPlayingAttributes.ContentState
 
   var body: some View {
-    if let urlString = state.artworkUrl, let url = URL(string: urlString) {
+    if let name = state.artworkAsset, let image = Self.bundledImage(name) {
+      Image(uiImage: image).resizable().aspectRatio(contentMode: .fill)
+    } else if let urlString = state.artworkUrl, let url = URL(string: urlString) {
       AsyncImage(url: url) { image in
         image.resizable().aspectRatio(contentMode: .fill)
       } placeholder: {
@@ -16,6 +25,21 @@ private struct Artwork: View {
     } else {
       placeholder
     }
+  }
+
+  // Loads an image the config plugin's `assets` option copied into this extension's
+  // bundle. UIImage(named:) covers an asset-catalog entry; the explicit bundle path
+  // covers the loose file the plugin actually copies. A name that matches neither falls
+  // through to nil, so the view degrades to the URL or the placeholder rather than
+  // rendering blank -- the developer is warned from the JS side, where it is visible.
+  private static func bundledImage(_ name: String) -> UIImage? {
+    if let image = UIImage(named: name) { return image }
+    let ns = name as NSString
+    let ext = ns.pathExtension.isEmpty ? "png" : ns.pathExtension
+    guard let path = Bundle.main.path(forResource: ns.deletingPathExtension, ofType: ext) else {
+      return nil
+    }
+    return UIImage(contentsOfFile: path)
   }
 
   private var placeholder: some View {

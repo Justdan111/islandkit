@@ -20,6 +20,11 @@ declare class ExpoIslandKitModule extends NativeModule<Record<string, never>> {
     props: Record<string, unknown>,
     deepLinkUrl: string | null
   ): StartLiveActivityResult;
+  /**
+   * Images the plugin's `assets` option bundled into the widget extension, or null when
+   * the app was prebuilt by a version that did not publish the list.
+   */
+  getBundledAssetNames(): string[] | null;
   /** ActivityKit's own ids, which unlike the JS map survive app termination. */
   getActiveActivityIds(preset: string): string[];
   updateLiveActivity(

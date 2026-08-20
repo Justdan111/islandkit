@@ -169,6 +169,108 @@ describe('generateTarget', () => {
       /at least one/i
     );
   });
+
+  describe('assets', () => {
+    function writeAsset(root, relPath, bytes = 'PNGDATA') {
+      const abs = path.join(root, relPath);
+      fs.mkdirSync(path.dirname(abs), { recursive: true });
+      fs.writeFileSync(abs, bytes);
+      return abs;
+    }
+
+    it('copies declared assets into the target and reports their names', () => {
+      writeAsset(projectRoot, 'assets/cover.png');
+      const { dest, files, assetNames } = generateTarget({
+        packageRoot: PACKAGE_ROOT,
+        projectRoot,
+        options: { assets: ['./assets/cover.png'] },
+      });
+
+      expect(assetNames).toEqual(['cover.png']);
+      expect(files).toContain('cover.png');
+      expect(fs.readFileSync(path.join(dest, 'cover.png'), 'utf8')).toBe('PNGDATA');
+    });
+
+    it('bundles assets flat, so the basename is what artworkAsset refers to', () => {
+      writeAsset(projectRoot, 'deeply/nested/art/cover.png');
+      const { dest, assetNames } = generateTarget({
+        packageRoot: PACKAGE_ROOT,
+        projectRoot,
+        options: { assets: ['./deeply/nested/art/cover.png'] },
+      });
+
+      expect(assetNames).toEqual(['cover.png']);
+      expect(fs.existsSync(path.join(dest, 'cover.png'))).toBe(true);
+    });
+
+    it('reports no assets when the option is absent', () => {
+      const { assetNames } = generateTarget({ packageRoot: PACKAGE_ROOT, projectRoot, options: {} });
+      expect(assetNames).toEqual([]);
+    });
+
+    it('removes an asset that is no longer declared', () => {
+      writeAsset(projectRoot, 'assets/cover.png');
+      const { dest } = generateTarget({
+        packageRoot: PACKAGE_ROOT,
+        projectRoot,
+        options: { assets: ['./assets/cover.png'] },
+      });
+      expect(fs.existsSync(path.join(dest, 'cover.png'))).toBe(true);
+
+      generateTarget({ packageRoot: PACKAGE_ROOT, projectRoot, options: {} });
+      expect(fs.existsSync(path.join(dest, 'cover.png'))).toBe(false);
+    });
+
+    it('throws when an asset path does not exist, naming the resolved path', () => {
+      expect(() =>
+        generateTarget({
+          packageRoot: PACKAGE_ROOT,
+          projectRoot,
+          options: { assets: ['./assets/missing.png'] },
+        })
+      ).toThrow(/was not found at .*missing\.png/);
+    });
+
+    it('throws when two assets share a filename, since flat copying would clobber one', () => {
+      writeAsset(projectRoot, 'a/cover.png');
+      writeAsset(projectRoot, 'b/cover.png');
+      expect(() =>
+        generateTarget({
+          packageRoot: PACKAGE_ROOT,
+          projectRoot,
+          options: { assets: ['./a/cover.png', './b/cover.png'] },
+        })
+      ).toThrow(/same filename "cover\.png"/);
+    });
+
+    it('throws when assets is not an array', () => {
+      expect(() =>
+        generateTarget({ packageRoot: PACKAGE_ROOT, projectRoot, options: { assets: 'cover.png' } })
+      ).toThrow(/"assets" must be an array/);
+    });
+
+    it('throws on an empty or non-string entry', () => {
+      expect(() =>
+        generateTarget({ packageRoot: PACKAGE_ROOT, projectRoot, options: { assets: [''] } })
+      ).toThrow(/non-empty string/);
+    });
+
+    it('does not wipe a working target when an asset path is bad', () => {
+      const { dest } = generateTarget({ packageRoot: PACKAGE_ROOT, projectRoot, options: {} });
+      expect(fs.existsSync(path.join(dest, 'NowPlayingLiveActivity.swift'))).toBe(true);
+
+      expect(() =>
+        generateTarget({
+          packageRoot: PACKAGE_ROOT,
+          projectRoot,
+          options: { assets: ['./nope.png'] },
+        })
+      ).toThrow();
+      // Resolution happens before the destructive wipe, so the previous build survives.
+      expect(fs.existsSync(path.join(dest, 'NowPlayingLiveActivity.swift'))).toBe(true);
+    });
+  });
+
 });
 
 function packageSharedDir() {

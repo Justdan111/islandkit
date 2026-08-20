@@ -11,7 +11,7 @@ const withTargetsDir = require('@bacons/apple-targets/app.plugin');
 const pkg = require('./package.json');
 const { generateTarget } = require('./plugin/generateTarget');
 
-const KNOWN_OPTIONS = ['presets', 'deploymentTarget', 'bundleIdentifier', 'defaultAccentColor'];
+const KNOWN_OPTIONS = ['presets', 'deploymentTarget', 'bundleIdentifier', 'defaultAccentColor', 'assets'];
 
 // Options documented in the product docs that this version does not implement, with the
 // reason. Surfaced as warnings rather than errors so a consumer copying an older snippet
@@ -73,7 +73,7 @@ const withIslandKit = (config, options = {}) => {
 
   // MUST run before withTargetsDir globs targets/. Option validation happens inside
   // generateTarget and throws with the valid preset list.
-  const { presetKeys } = generateTarget({ packageRoot: __dirname, projectRoot, options });
+  const { presetKeys, assetNames } = generateTarget({ packageRoot: __dirname, projectRoot, options });
 
   config = withInfoPlist(config, (c) => {
     c.modResults.NSSupportsLiveActivities = true;
@@ -82,6 +82,9 @@ const withIslandKit = (config, options = {}) => {
     // instead of starting an activity no compiled widget can render. Taking the list from
     // generateTarget's return value (rather than re-resolving it) makes drift impossible.
     c.modResults.IslandKitIncludedPresets = presetKeys;
+    // Published so the runtime can tell "you never bundled that image" apart from "that
+    // image failed to load", and warn the developer instead of rendering a silent blank.
+    c.modResults.IslandKitBundledAssets = assetNames;
     return c;
   });
 

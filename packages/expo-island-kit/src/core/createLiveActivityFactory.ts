@@ -53,6 +53,42 @@ function warnOnPastEndDate(preset: string, key: string, value: Date): void {
   }
 }
 
+// null means the app was prebuilt before the list was published — unknown, not empty —
+// so callers stay quiet rather than warn about a name they cannot actually check.
+// Deliberately uncached: this is only reached when a consumer passes artworkAsset, so
+// the call is rare, and caching would make the value order-dependent across a process.
+function bundledAssetNames(): string[] | null {
+  try {
+    return ExpoIslandKitModule.getBundledAssetNames();
+  } catch {
+    return null;
+  }
+}
+
+// A name that was never bundled resolves to nothing in the widget, which renders the URL
+// or the placeholder instead — indistinguishable from passing no artwork at all. Say so
+// here, where the developer can actually see it.
+function warnOnArtworkAsset(preset: string, props: Record<string, unknown>): void {
+  const asset = props.artworkAsset;
+  if (typeof asset !== 'string' || asset === '') return;
+
+  const available = bundledAssetNames();
+  if (available && !available.includes(asset)) {
+    warnDev(
+      `${preset}: artworkAsset "${asset}" is not bundled, so no image will render. ` +
+        `Bundled assets: ${available.length ? available.join(', ') : '(none)'}. ` +
+        'Add it to the plugin\'s "assets" option and re-run: npx expo prebuild -p ios --clean'
+    );
+  }
+
+  if (typeof props.artworkUrl === 'string' && props.artworkUrl !== '') {
+    warnDev(
+      `${preset}: both artworkAsset and artworkUrl are set. The bundled asset wins — ` +
+        'it loads synchronously and cannot fail on the network.'
+    );
+  }
+}
+
 // Dates don't marshal across the Expo bridge cleanly; convert any Date-valued prop
 // to an ISO-8601 string. The Swift decoder parses it back via PropCoercion.
 //
@@ -60,6 +96,7 @@ function warnOnPastEndDate(preset: string, key: string, value: Date): void {
 // on purpose: PropCoercion treats a missing key as "keep the previous value", so
 // injecting defaults would silently break partial updates.
 function serializeProps(preset: string, props: Record<string, unknown>): Record<string, unknown> {
+  warnOnArtworkAsset(preset, props);
   const out: Record<string, unknown> = {};
   for (const key of Object.keys(props)) {
     const value = props[key];
