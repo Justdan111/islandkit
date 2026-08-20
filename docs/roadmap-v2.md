@@ -51,9 +51,9 @@ so the remaining work is layout and API surface.
 
 Folded in here rather than tracked separately, since both are preset-view work:
 
-- **Now Playing expanded progress-bar clip** — the bottom progress bar clips in the
-  expanded presentation; needs padding on `.expanded(.bottom)`. Logged since Phase 2 and
-  carried through the Phase 3 refactor, which preserved the structure that makes it
-  fixable there.
-- **Now Playing trailing-time inset** — trailing elapsed/remaining time sits too close
-  to the edge in the expanded layout.
+Both original entries here — the Now Playing expanded progress-bar clip and the
+trailing-time inset — were **fixed in v1** rather than deferred, once a device pass made
+them visible. They are left recorded because the cause generalises: the expanded island
+clips to a rounded rect, so any view placed flush against the `.bottom` or `.trailing`
+edge of an expanded region loses pixels to the curve. New preset layouts should carry an
+inset from the start.
