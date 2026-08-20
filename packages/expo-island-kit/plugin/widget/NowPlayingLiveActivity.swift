@@ -95,6 +95,9 @@ struct NowPlayingLiveActivity: Widget {
           Text(timeString(context.state.durationSeconds))
             .font(.caption)
             .foregroundStyle(.secondary)
+            // The expanded island clips to a rounded rect, so a trailing view sitting
+            // flush against the edge loses its last glyph to the curve.
+            .padding(.trailing, 4)
         }
         DynamicIslandExpandedRegion(.bottom) {
           VStack(alignment: .leading, spacing: 6) {
@@ -103,6 +106,10 @@ struct NowPlayingLiveActivity: Widget {
             ProgressView(value: progressFraction(elapsed: context.state.elapsedSeconds, duration: context.state.durationSeconds))
               .tint(presetAccentColor(context.state.accentColorHex))
           }
+          // Without this the progress bar is the last thing in the region and sits on the
+          // island's rounded bottom edge, which slices it. Padding the container keeps the
+          // bar inside the curve.
+          .padding(.bottom, 6)
         }
       } compactLeading: {
         Artwork(state: context.state)
